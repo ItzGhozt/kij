@@ -6,10 +6,8 @@ from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import traceback
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Remove the load_dotenv() call since Streamlit Cloud handles env vars differently
 
 # Configuration
 MAX_TEAMS = 15
