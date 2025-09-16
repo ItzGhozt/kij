@@ -3,8 +3,6 @@ import pandas as pd
 import json
 import os
 from datetime import datetime, timedelta
-import plotly.express as px
-import plotly.graph_objects as go
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import traceback
@@ -443,7 +441,7 @@ def navigation():
 def home_page():
     st.markdown("""
     <div class="hero-section">
-        <h1 class="hero-title">KIJ Grass Tournament</h1>
+        <h1 class="hero-title">KIJ Volleyball Tournament</h1>
         <div style="margin-top: 3rem;">
             <div class="cta-text" style="color: #2d5a2d; font-size: 1.4rem; font-weight: 600; margin-bottom: 0.5rem;">Ready to Play?</div>
         </div>
