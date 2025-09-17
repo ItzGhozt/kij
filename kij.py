@@ -7,8 +7,6 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import traceback
 
-# Remove the load_dotenv() call since Streamlit Cloud handles env vars differently
-
 # Configuration
 MAX_TEAMS = 15
 SETS_PER_GAME = 2
@@ -18,25 +16,30 @@ SETS_PER_GAME = 2
 def init_connection():
     """Initialize database connection"""
     try:
-        # First try with DATABASE_URL
-        database_url = os.getenv("DATABASE_URL")
-        if database_url:
-            conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-            return conn
+        # Try to get database URL from Streamlit secrets first, then environment variables
+        database_url = None
         
-        # Fallback to individual parameters
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            database=os.getenv("DB_NAME", "neondb"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT", "5432"),
-            sslmode="require",
-            cursor_factory=RealDictCursor
-        )
+        # Method 1: Try Streamlit secrets
+        try:
+            database_url = st.secrets["DATABASE_URL"]
+            st.success("DATABASE_URL loaded from Streamlit secrets")
+        except:
+            # Method 2: Try environment variables as fallback
+            database_url = os.getenv("DATABASE_URL")
+            if database_url:
+                st.success("DATABASE_URL loaded from environment variables")
+            else:
+                st.error("DATABASE_URL not found in secrets or environment variables")
+                return None
+        
+        # Try to connect
+        conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+        st.success("Database connected successfully!")
         return conn
+        
     except Exception as e:
         st.error(f"Database connection failed: {e}")
+        st.error("Please check your DATABASE_URL in Streamlit Cloud secrets")
         return None
 
 def get_db_connection():
@@ -250,14 +253,14 @@ def load_css():
     /* Clean Navigation Bar - mobile responsive */
     .nav-container {
         background: transparent;
-        padding: 0.5rem 0;
+        padding: 0.3rem 0;
         display: flex;
         justify-content: center;
         align-items: center;
         position: sticky;
         top: 0;
         z-index: 100;
-        gap: 0.5rem;
+        gap: 0.3rem;
         flex-wrap: wrap;
     }
     
@@ -266,7 +269,7 @@ def load_css():
         text-decoration: none !important;
         font-weight: 500 !important;
         font-size: 0.9rem !important;
-        padding: 0.4rem 0.8rem !important;
+        padding: 0.3rem 0.6rem !important;
         background: transparent !important;
         border: none !important;
         cursor: pointer !important;
@@ -275,6 +278,12 @@ def load_css():
         transition: all 0.3s ease !important;
         border-radius: 0 !important;
         white-space: nowrap;
+    }
+    
+    .nav-item:hover {
+        background: transparent !important;
+        color: rgba(45, 90, 45, 1) !important;
+        transform: none !important;
     }
     
     @media (max-width: 768px) {
@@ -295,12 +304,6 @@ def load_css():
         .main > div {
             padding: 0 1rem;
         }
-    }
-    
-    .nav-item:hover {
-        background: transparent !important;
-        color: rgba(45, 90, 45, 1) !important;
-        transform: none !important;
     }
     
     /* Hero section */
@@ -383,6 +386,15 @@ def load_css():
         margin: 1rem 0;
     }
     
+    /* White dataframe styling */
+    .stDataFrame {
+        background-color: white !important;
+    }
+    
+    .stDataFrame > div {
+        background-color: white !important;
+    }
+    
     /* Hide Streamlit elements */
     .stDeployButton {display:none;}
     .stDecoration {display:none;}
@@ -429,15 +441,6 @@ def load_css():
         color: #2d3436 !important;
         border: 1px solid rgba(164, 184, 124, 0.3) !important;
         border-radius: 0.5rem !important;
-    }
-    
-    /* White dataframe styling */
-    .stDataFrame {
-        background-color: white !important;
-    }
-    
-    .stDataFrame > div {
-        background-color: white !important;
     }
     
     /* Primary button styling - smaller score button */
@@ -944,25 +947,72 @@ def game_history_interface():
     
     st.subheader("Completed Games")
     
+    # Group games by pool matchups
+    pool_games = {
+        'Pool A': [],
+        'Pool B': [], 
+        'Pool C': [],
+        'Inter-Pool': []
+    }
+    
     for game_key, game_data in completed_games.items():
-        with st.expander(f"🏐 {game_data['team1']} vs {game_data['team2']} - Winner: {game_data['winner']}"):
-            col1, col2 = st.columns(2)
+        team1 = game_data['team1']
+        team2 = game_data['team2']
+        
+        # Get pool information for both teams
+        team1_pool = st.session_state.teams.get(team1, {}).get('pool', 'A')
+        team2_pool = st.session_state.teams.get(team2, {}).get('pool', 'A')
+        
+        # Determine which section this game belongs to
+        if team1_pool == team2_pool:
+            # Same pool game
+            pool_games[f'Pool {team1_pool}'].append((game_key, game_data))
+        else:
+            # Inter-pool game
+            pool_games['Inter-Pool'].append((game_key, game_data))
+    
+    # Display games by pool sections
+    for section_name in ['Pool A', 'Pool B', 'Pool C', 'Inter-Pool']:
+        if pool_games[section_name]:  # Only show section if there are games
+            st.markdown(f"### {section_name} Games")
             
-            with col1:
-                st.write("**Set Scores:**")
-                for set_num in range(1, SETS_PER_GAME + 1):
-                    set_key = f'set{set_num}'
-                    t1_score = game_data['sets'][set_key]['team1_score']
-                    t2_score = game_data['sets'][set_key]['team2_score']
-                    st.write(f"Set {set_num}: {game_data['team1']} {t1_score} - {t2_score} {game_data['team2']}")
+            for game_key, game_data in pool_games[section_name]:
+                team1_pool = st.session_state.teams.get(game_data['team1'], {}).get('pool', 'A')
+                team2_pool = st.session_state.teams.get(game_data['team2'], {}).get('pool', 'A')
+                
+                # Create title based on section type
+                if section_name == 'Inter-Pool':
+                    title = f"🏐 {game_data['team1']} (Pool {team1_pool}) vs {game_data['team2']} (Pool {team2_pool}) - Winner: {game_data['winner']}"
+                else:
+                    title = f"🏐 {game_data['team1']} vs {game_data['team2']} - Winner: {game_data['winner']}"
+                
+                with st.expander(title):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**Set Scores:**")
+                        for set_num in range(1, SETS_PER_GAME + 1):
+                            set_key = f'set{set_num}'
+                            t1_score = game_data['sets'][set_key]['team1_score']
+                            t2_score = game_data['sets'][set_key]['team2_score']
+                            st.write(f"Set {set_num}: {game_data['team1']} {t1_score} - {game_data['team2']} {t2_score}")
+                    
+                    with col2:
+                        if game_data.get('start_time'):
+                            start_time = datetime.fromisoformat(game_data['start_time'])
+                            st.write(f"**Started:** {start_time.strftime('%Y-%m-%d %H:%M')}")
+                        if game_data.get('end_time'):
+                            end_time = datetime.fromisoformat(game_data['end_time'])
+                            st.write(f"**Completed:** {end_time.strftime('%Y-%m-%d %H:%M')}")
+                        
+                        # Show pool information
+                        st.write(f"**{game_data['team1']}:** Pool {team1_pool}")
+                        st.write(f"**{game_data['team2']}:** Pool {team2_pool}")
             
-            with col2:
-                if game_data.get('start_time'):
-                    start_time = datetime.fromisoformat(game_data['start_time'])
-                    st.write(f"**Started:** {start_time.strftime('%Y-%m-%d %H:%M')}")
-                if game_data.get('end_time'):
-                    end_time = datetime.fromisoformat(game_data['end_time'])
-                    st.write(f"**Completed:** {end_time.strftime('%Y-%m-%d %H:%M')}")
+            st.markdown("---")  # Add separator between sections
+    
+    if not any(pool_games.values()):
+        st.info("No completed games to display.")
 
 def main():
     st.set_page_config(
