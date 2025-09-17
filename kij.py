@@ -78,6 +78,7 @@ def get_db_connection():
         st.session_state.db_conn = init_connection()
     return st.session_state.db_conn
 
+# Database operations
 def load_teams_from_db():
     """Load teams from database"""
     conn = get_db_connection()
@@ -551,33 +552,21 @@ def navigation():
     with col1:
         if st.button("HOME", key="nav_home"):
             st.session_state.current_page = "home"
-            # Reset admin mode when navigating away
-            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
-                st.session_state.admin_mode = False
             st.rerun()
 
     with col2:
         if st.button("TEAMS", key="nav_teams"):
             st.session_state.current_page = "teams"
-            # Reset admin mode when navigating away
-            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
-                st.session_state.admin_mode = False
             st.rerun()
 
     with col3:
         if st.button("GAMES", key="nav_games"):
             st.session_state.current_page = "games"
-            # Reset admin mode when navigating away
-            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
-                st.session_state.admin_mode = False
             st.rerun()
 
     with col4:
         if st.button("LIVE", key="nav_live"):
             st.session_state.current_page = "live"
-            # Reset admin mode when navigating away
-            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
-                st.session_state.admin_mode = False
             st.rerun()
 
     with col5:
@@ -918,6 +907,16 @@ def live_scoreboard_page():
     st.title("🔴 LIVE TOURNAMENT SCOREBOARD")
     st.markdown("*Data persists in database - refresh anytime!*")
     
+    # CRITICAL FIX: Always reload fresh data from database on live page
+    st.session_state.teams = load_teams_from_db()
+    st.session_state.games = load_games_from_db()
+    
+    # Add refresh button for manual updates
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        if st.button("🔄 Refresh Scores", type="primary", use_container_width=True):
+            st.rerun()
+    
     # Current Games Section
     st.subheader("⚡ LIVE GAMES")
     
@@ -992,7 +991,7 @@ def live_scoreboard_page():
                     
                     st.markdown("---")
                 
-                st.markdown("---")  # Add separator between pool sections
+                st.markdown("---")
     else:
         st.info("No games currently in progress")
     
