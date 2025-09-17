@@ -239,6 +239,12 @@ def load_css():
     .stApp {
         background: linear-gradient(135deg, #b8d4b0 0%, #d4c5a0 50%, #e8d5b7 100%);
         min-height: 100vh;
+        padding-top: 0;
+    }
+    
+    /* Reduce top spacing */
+    .main .block-container {
+        padding-top: 1rem;
     }
     
     /* Clean Navigation Bar - mobile responsive */
@@ -425,15 +431,24 @@ def load_css():
         border-radius: 0.5rem !important;
     }
     
-    /* Primary button styling - larger score button */
+    /* White dataframe styling */
+    .stDataFrame {
+        background-color: white !important;
+    }
+    
+    .stDataFrame > div {
+        background-color: white !important;
+    }
+    
+    /* Primary button styling - smaller score button */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #A4B87C, #8B9F6B) !important;
         color: white !important;
         border: none !important;
         border-radius: 0.5rem !important;
-        padding: 1rem 2rem !important;
+        padding: 0.6rem 1.2rem !important;
         font-weight: 600 !important;
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 15px rgba(164, 184, 124, 0.3) !important;
         text-transform: none !important;
@@ -818,32 +833,75 @@ def live_scoreboard_page():
     active_games = {k: v for k, v in st.session_state.games.items() if not v.get('completed', False)}
     
     if active_games:
+        # Group active games by pool
+        pool_games = {'A': [], 'B': [], 'C': [], 'Inter-Pool': []}
+        
         for game_key, game_data in active_games.items():
-            col1, col2, col3 = st.columns([2, 1, 2])
+            team1 = game_data['team1']
+            team2 = game_data['team2']
+            team1_pool = st.session_state.teams.get(team1, {}).get('pool', 'A')
+            team2_pool = st.session_state.teams.get(team2, {}).get('pool', 'A')
             
-            with col1:
-                st.markdown(f"""
-                <div class="score-card">
-                    <div class="team-name">{game_data['team1']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown('<div class="vs-text">VS</div>', unsafe_allow_html=True)
-                for set_num in range(1, SETS_PER_GAME + 1):
-                    set_key = f'set{set_num}'
-                    t1_score = game_data['sets'][set_key]['team1_score']
-                    t2_score = game_data['sets'][set_key]['team2_score']
-                    st.write(f"**Set {set_num}:** {t1_score} - {t2_score}")
-            
-            with col3:
-                st.markdown(f"""
-                <div class="score-card">
-                    <div class="team-name">{game_data['team2']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("---")
+            if team1_pool == team2_pool:
+                pool_games[team1_pool].append((game_key, game_data))
+            else:
+                pool_games['Inter-Pool'].append((game_key, game_data))
+        
+        # Display live games by pool
+        for pool_name in ['A', 'B', 'C', 'Inter-Pool']:
+            if pool_games[pool_name]:
+                if pool_name == 'Inter-Pool':
+                    st.markdown(f"### 🔥 Inter-Pool Games - LIVE")
+                else:
+                    st.markdown(f"### 🏊 Pool {pool_name} - LIVE")
+                
+                for game_key, game_data in pool_games[pool_name]:
+                    team1_pool = st.session_state.teams.get(game_data['team1'], {}).get('pool', 'A')
+                    team2_pool = st.session_state.teams.get(game_data['team2'], {}).get('pool', 'A')
+                    
+                    col1, col2, col3 = st.columns([2, 1, 2])
+                    
+                    with col1:
+                        if pool_name == 'Inter-Pool':
+                            st.markdown(f"""
+                            <div class="score-card">
+                                <div class="team-name">{game_data['team1']}</div>
+                                <div style="color: #8B9F6B;">Pool {team1_pool}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div class="score-card">
+                                <div class="team-name">{game_data['team1']}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown('<div class="vs-text">VS</div>', unsafe_allow_html=True)
+                        for set_num in range(1, SETS_PER_GAME + 1):
+                            set_key = f'set{set_num}'
+                            t1_score = game_data['sets'][set_key]['team1_score']
+                            t2_score = game_data['sets'][set_key]['team2_score']
+                            st.write(f"**Set {set_num}:** {t1_score} - {t2_score}")
+                    
+                    with col3:
+                        if pool_name == 'Inter-Pool':
+                            st.markdown(f"""
+                            <div class="score-card">
+                                <div class="team-name">{game_data['team2']}</div>
+                                <div style="color: #8B9F6B;">Pool {team2_pool}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div class="score-card">
+                                <div class="team-name">{game_data['team2']}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                
+                st.markdown("---")  # Add separator between pool sections
     else:
         st.info("No games currently in progress")
     
