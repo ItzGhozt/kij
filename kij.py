@@ -551,21 +551,33 @@ def navigation():
     with col1:
         if st.button("HOME", key="nav_home"):
             st.session_state.current_page = "home"
+            # Reset admin mode when navigating away
+            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
+                st.session_state.admin_mode = False
             st.rerun()
 
     with col2:
         if st.button("TEAMS", key="nav_teams"):
             st.session_state.current_page = "teams"
+            # Reset admin mode when navigating away
+            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
+                st.session_state.admin_mode = False
             st.rerun()
 
     with col3:
         if st.button("GAMES", key="nav_games"):
             st.session_state.current_page = "games"
+            # Reset admin mode when navigating away
+            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
+                st.session_state.admin_mode = False
             st.rerun()
 
     with col4:
         if st.button("LIVE", key="nav_live"):
             st.session_state.current_page = "live"
+            # Reset admin mode when navigating away
+            if st.session_state.admin_mode and not st.session_state.admin_authenticated:
+                st.session_state.admin_mode = False
             st.rerun()
 
     with col5:
