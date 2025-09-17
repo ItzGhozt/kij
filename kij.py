@@ -6,10 +6,61 @@ from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import traceback
+import hashlib
 
 # Configuration
 MAX_TEAMS = 15
 SETS_PER_GAME = 2
+
+# Admin credentials - In production, store these securely
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD_HASH = hashlib.sha256("volleyball123".encode()).hexdigest()  # Default password: volleyball123
+
+def hash_password(password):
+    """Hash a password for storing."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, hashed):
+    """Verify a password against its hash."""
+    return hash_password(password) == hashed
+
+def admin_login():
+    """Display admin login form and handle authentication."""
+    st.markdown("""
+    <div style="max-width: 400px; margin: 2rem auto; padding: 2rem; 
+                background: rgba(255, 255, 255, 0.95); border-radius: 1rem;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+        <h2 style="text-align: center; color: #2d5a2d; margin-bottom: 1.5rem;">🔑 Admin Login</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.form("admin_login_form"):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            username = st.text_input("Username", placeholder="Enter admin username")
+            password = st.text_input("Password", type="password", placeholder="Enter password")
+            
+            submitted = st.form_submit_button("🚀 Login", use_container_width=True)
+            
+            if submitted:
+                if username == ADMIN_USERNAME and verify_password(password, ADMIN_PASSWORD_HASH):
+                    st.session_state.admin_authenticated = True
+                    st.session_state.admin_mode = True
+                    st.success("✅ Admin login successful!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password")
+    
+    # Show default credentials for demo purposes
+    with st.expander("📋 Demo Credentials", expanded=False):
+        st.info("""
+        **Default Admin Credentials:**
+        - Username: `admin`
+        - Password: `volleyball123`
+        
+        *In production, change these credentials and store them securely!*
+        """)
 
 # Database connection
 @st.cache_resource
@@ -22,19 +73,15 @@ def init_connection():
         # Method 1: Try Streamlit secrets
         try:
             database_url = st.secrets["DATABASE_URL"]
-            st.success("DATABASE_URL loaded from Streamlit secrets")
         except:
             # Method 2: Try environment variables as fallback
             database_url = os.getenv("DATABASE_URL")
-            if database_url:
-                st.success("DATABASE_URL loaded from environment variables")
-            else:
+            if not database_url:
                 st.error("DATABASE_URL not found in secrets or environment variables")
                 return None
         
         # Try to connect
         conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-        st.success("Database connected successfully!")
         return conn
         
     except Exception as e:
@@ -48,7 +95,6 @@ def get_db_connection():
         st.session_state.db_conn = init_connection()
     return st.session_state.db_conn
 
-# Database operations
 def load_teams_from_db():
     """Load teams from database"""
     conn = get_db_connection()
@@ -225,6 +271,8 @@ def initialize_session_state():
         st.session_state.current_page = 'home'
     if 'admin_mode' not in st.session_state:
         st.session_state.admin_mode = False
+    if 'admin_authenticated' not in st.session_state:
+        st.session_state.admin_authenticated = False
 
 # Custom CSS (keeping original styling)
 def load_css():
@@ -481,11 +529,38 @@ def load_css():
         transform: translateY(-2px) !important;
         box-shadow: 0 8px 25px rgba(188, 168, 136, 0.5) !important;
     }
+    
+    /* Admin logout button styling */
+    .admin-logout-btn {
+        position: fixed;
+        top: 60px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(220, 53, 69, 0.9) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 20px !important;
+        padding: 0.4rem 1rem !important;
+        font-size: 0.8rem !important;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease !important;
+    }
+    
+    .admin-logout-btn:hover {
+        background: rgba(220, 53, 69, 1) !important;
+        transform: translateY(-1px) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 def navigation():
-    admin_text = "PLAYER" if st.session_state.admin_mode else "ADMIN"
+    # Admin login/logout logic
+    if st.session_state.admin_mode and st.session_state.admin_authenticated:
+        admin_text = "LOGOUT"
+    elif st.session_state.admin_mode and not st.session_state.admin_authenticated:
+        admin_text = "LOGIN"
+    else:
+        admin_text = "ADMIN"
 
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     col1, col2, col3, col4, col5 = st.columns([1,1,1,1,1], gap="small")
@@ -512,10 +587,28 @@ def navigation():
 
     with col5:
         if st.button(admin_text, key="nav_admin"):
-            st.session_state.admin_mode = not st.session_state.admin_mode
-            st.rerun()
+            if st.session_state.admin_mode and st.session_state.admin_authenticated:
+                # Logout
+                st.session_state.admin_mode = False
+                st.session_state.admin_authenticated = False
+                st.session_state.current_page = 'home'
+                st.success("✅ Logged out successfully!")
+                st.rerun()
+            elif st.session_state.admin_mode and not st.session_state.admin_authenticated:
+                # Already in login mode, do nothing or redirect to login
+                pass
+            else:
+                # Switch to admin mode (will show login)
+                st.session_state.admin_mode = True
+                st.session_state.current_page = 'admin_login'
+                st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+def admin_login_page():
+    """Display the admin login page."""
+    st.title("Admin Portal")
+    admin_login()
 
 def home_page():
     st.markdown("""
@@ -539,7 +632,7 @@ def home_page():
 def teams_page():
     st.title("Team Management")
     
-    if st.session_state.admin_mode:
+    if st.session_state.admin_mode and st.session_state.admin_authenticated:
         st.subheader("📋 Admin View - All Teams")
         
         # Tournament Reset Feature - Admin Only
@@ -765,7 +858,7 @@ def score_game_interface():
                 elif team2_sets > team1_sets:
                     current_game['winner'] = team2
                 else:
-                    current_game['winner'] = 'Tie'
+                    current_game['winner'] = 'Split'
                 
                 current_game['completed'] = True
                 current_game['end_time'] = datetime.now().isoformat()
@@ -1033,17 +1126,42 @@ def main():
         st.error("❌ Database connection failed. Please check your DATABASE_URL environment variable.")
         st.stop()
     
-    # Display mode indicator
-    mode_text = "🔑 Administrator Portal" if st.session_state.admin_mode else "👤 Player Portal"
-    st.markdown(f"""
-    <div style="position: fixed; top: 10px; right: 10px; background: rgba(164, 184, 124, 0.9); 
-                padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; z-index: 1000;
-                backdrop-filter: blur(10px); color: white; font-weight: 500;">
-        {mode_text}
-    </div>
-    """, unsafe_allow_html=True)
+    # Admin mode status display
+    if st.session_state.admin_mode and st.session_state.admin_authenticated:
+        mode_text = "🔑 Administrator Portal"
+        # Add logout button
+        st.markdown(f"""
+        <div style="position: fixed; top: 10px; right: 10px; background: rgba(164, 184, 124, 0.9); 
+                    padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; z-index: 1000;
+                    backdrop-filter: blur(10px); color: white; font-weight: 500;">
+            {mode_text}
+        </div>
+        """, unsafe_allow_html=True)
+    elif st.session_state.admin_mode and not st.session_state.admin_authenticated:
+        mode_text = "🔐 Login Required"
+        st.markdown(f"""
+        <div style="position: fixed; top: 10px; right: 10px; background: rgba(220, 53, 69, 0.9); 
+                    padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; z-index: 1000;
+                    backdrop-filter: blur(10px); color: white; font-weight: 500;">
+            {mode_text}
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        mode_text = "👤 Player Portal"
+        st.markdown(f"""
+        <div style="position: fixed; top: 10px; right: 10px; background: rgba(108, 117, 125, 0.9); 
+                    padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; z-index: 1000;
+                    backdrop-filter: blur(10px); color: white; font-weight: 500;">
+            {mode_text}
+        </div>
+        """, unsafe_allow_html=True)
     
     navigation()
+    
+    # Handle admin login requirement
+    if st.session_state.admin_mode and not st.session_state.admin_authenticated:
+        admin_login_page()
+        return
     
     # Route to pages
     if st.session_state.current_page == 'home':
