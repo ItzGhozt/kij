@@ -241,7 +241,7 @@ def load_css():
         min-height: 100vh;
     }
     
-    /* Clean Navigation Bar - centered and blended */
+    /* Clean Navigation Bar - mobile responsive */
     .nav-container {
         background: transparent;
         padding: 0.5rem 0;
@@ -251,15 +251,16 @@ def load_css():
         position: sticky;
         top: 0;
         z-index: 100;
-        gap: 1rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
     }
     
     .nav-item {
         color: rgba(45, 90, 45, 0.8) !important;
         text-decoration: none !important;
         font-weight: 500 !important;
-        font-size: 1rem !important;
-        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+        padding: 0.4rem 0.8rem !important;
         background: transparent !important;
         border: none !important;
         cursor: pointer !important;
@@ -267,6 +268,27 @@ def load_css():
         letter-spacing: 0.5px;
         transition: all 0.3s ease !important;
         border-radius: 0 !important;
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 768px) {
+        .nav-container {
+            gap: 0.2rem;
+            padding: 0.3rem 0;
+        }
+        
+        .nav-item {
+            font-size: 0.8rem !important;
+            padding: 0.3rem 0.6rem !important;
+        }
+        
+        .hero-title {
+            font-size: 2.5rem !important;
+        }
+        
+        .main > div {
+            padding: 0 1rem;
+        }
     }
     
     .nav-item:hover {
@@ -388,17 +410,58 @@ def load_css():
         outline: none !important;
     }
     
-    /* White text inputs */
+    /* White text inputs with color palette consistency */
     .stTextInput > div > div > input {
-        background-color: white !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
         color: #2d3436 !important;
-        border: 1px solid #ddd !important;
+        border: 1px solid rgba(164, 184, 124, 0.3) !important;
+        border-radius: 0.5rem !important;
     }
     
     .stSelectbox > div > div > div {
-        background-color: white !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
         color: #2d3436 !important;
-        border: 1px solid #ddd !important;
+        border: 1px solid rgba(164, 184, 124, 0.3) !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    /* Primary button styling - larger score button */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #A4B87C, #8B9F6B) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        padding: 1rem 2rem !important;
+        font-weight: 600 !important;
+        font-size: 1.2rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(164, 184, 124, 0.3) !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #8B9F6B, #7A8E5A) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(164, 184, 124, 0.5) !important;
+    }
+    
+    /* Form submit buttons */
+    .stForm button {
+        background: linear-gradient(135deg, #BCA888, #D4C5A0) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(188, 168, 136, 0.3) !important;
+    }
+    
+    .stForm button:hover {
+        background: linear-gradient(135deg, #D4C5A0, #E8D5B7) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(188, 168, 136, 0.5) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -447,7 +510,7 @@ def home_page():
     """, unsafe_allow_html=True)
     
     # Position button directly under "Ready to Play?" with minimal spacing
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
         st.markdown('<div style="text-align: center; margin-top: -3.5rem; position: relative; z-index: 20;">', unsafe_allow_html=True)
         if st.button("🏐 Score a Game", type="primary", use_container_width=True):
@@ -499,17 +562,15 @@ def teams_page():
             else:
                 with st.form("team_registration"):
                     team_name = st.text_input("Team Name", placeholder="Enter team name")
-                    player1 = st.text_input("Player 1 Name", placeholder="First player name")
-                    player2 = st.text_input("Player 2 Name", placeholder="Second player name")
                     pool = st.selectbox("Pool Assignment", options=["A", "B", "C"])
                     
                     if st.form_submit_button("Register Team", type="primary"):
-                        if team_name and player1 and player2:
+                        if team_name:
                             if team_name not in st.session_state.teams:
-                                if save_team_to_db(team_name, player1, player2, pool):
+                                if save_team_to_db(team_name, "", "", pool):
                                     st.session_state.teams[team_name] = {
-                                        'player1': player1,
-                                        'player2': player2,
+                                        'player1': "",
+                                        'player2': "",
                                         'pool': pool
                                     }
                                     st.success(f"Team '{team_name}' registered successfully in Pool {pool}!")
@@ -520,7 +581,7 @@ def teams_page():
                             else:
                                 st.error("Team name already exists!")
                         else:
-                            st.error("Please fill in all fields!")
+                            st.error("Please enter a team name!")
     
     # Display teams (for both admin and players)
     if st.session_state.teams:
@@ -541,8 +602,6 @@ def teams_page():
                         st.markdown(f"""
                         <div class="score-card">
                             <div class="team-name">🏐 {team_name}</div>
-                            <div>👤 {team_data['player1']}</div>
-                            <div>👤 {team_data['player2']}</div>
                             <div style="color: #8B9F6B; font-weight: 600; margin-top: 0.5rem;">Pool {pool_name}</div>
                         </div>
                         """, unsafe_allow_html=True)
