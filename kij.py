@@ -26,18 +26,11 @@ def verify_password(password, hashed):
 
 def admin_login():
     """Display admin login form and handle authentication."""
-    st.markdown("""
-    <div style="max-width: 400px; margin: 2rem auto; padding: 2rem; 
-                background: rgba(255, 255, 255, 0.95); border-radius: 1rem;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
-        <h2 style="text-align: center; color: #2d5a2d; margin-bottom: 1.5rem;">🔑 Admin Login</h2>
-    </div>
-    """, unsafe_allow_html=True)
-    
     with st.form("admin_login_form"):
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col2:
+            st.markdown("🔑 **Admin Login**")
             username = st.text_input("Username", placeholder="Enter admin username")
             password = st.text_input("Password", type="password", placeholder="Enter password")
             
@@ -51,16 +44,6 @@ def admin_login():
                     st.rerun()
                 else:
                     st.error("❌ Invalid username or password")
-    
-    # Show default credentials for demo purposes
-    with st.expander("📋 Demo Credentials", expanded=False):
-        st.info("""
-        **Default Admin Credentials:**
-        - Username: `admin`
-        - Password: `volleyball123`
-        
-        *In production, change these credentials and store them securely!*
-        """)
 
 # Database connection
 @st.cache_resource
