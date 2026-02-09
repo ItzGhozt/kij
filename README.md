@@ -1,6 +1,6 @@
 # KIJ Grass Volleyball Tournament – Score Tracker
 
-A real-time volleyball tournament management app, split into a **FastAPI backend** and a **React frontend** (plain `React.createElement`, no JSX).
+A real-time volleyball tournament management app, split into a **FastAPI backend** and a **React frontend**.
 
 ---
 

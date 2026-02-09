@@ -1,0 +1,68 @@
+/* ═══════════════════════════════════════════════════════════════
+   Navigation Bar
+   ═══════════════════════════════════════════════════════════════ */
+
+.nav-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: transparent;
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--green-deep);
+  opacity: 0.72;
+  background: none;
+  border: none;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 0.2s, color 0.2s;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+  opacity: 1;
+  color: var(--green-deep);
+}
+
+.nav-btn.active {
+  font-weight: 700;
+  position: relative;
+}
+.nav-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 25%;
+  width: 50%;
+  height: 2px;
+  background: var(--green-sage);
+  border-radius: 2px;
+}
+
+/* Admin / logout button special color when logged in */
+.nav-btn.admin-active {
+  color: var(--green-sage);
+  font-weight: 600;
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .nav-bar { gap: 0.1rem; padding: 0.4rem 0; }
+  .nav-btn { font-size: 0.75rem; padding: 0.35rem 0.55rem; letter-spacing: 0.3px; }
+}

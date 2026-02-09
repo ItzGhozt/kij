@@ -1,0 +1,222 @@
+/* ═══════════════════════════════════════════════════════════════
+   Cards – Score, Team, Game
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Generic card wrapper ─────────────────────────────────────── */
+.card {
+  background: var(--white-soft);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  padding: 1.8rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.07);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+/* ── Score card (team + score display) ────────────────────────── */
+.score-card {
+  background: linear-gradient(135deg, #f8f9fa, #eef0ec);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  margin: 0.4rem 0;
+  border-left: 4px solid var(--green-sage);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+  transition: transform 0.15s;
+}
+.score-card:hover { transform: translateY(-1px); }
+
+.score-card .team-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--gray-text);
+  margin-bottom: 0.25rem;
+}
+
+.score-card .pool-label {
+  font-size: 0.82rem;
+  color: var(--green-leaf);
+  font-weight: 600;
+}
+
+.score-display {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 700;
+  color: var(--green-leaf);
+  text-align: center;
+  line-height: 1;
+  margin: 0.5rem 0 0.3rem;
+}
+
+/* ── VS divider ───────────────────────────────────────────────── */
+.vs-text {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--gray-sub);
+  text-align: center;
+  padding: 1rem 0;
+}
+
+/* ── Match header card ────────────────────────────────────────── */
+.match-header {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(255,255,255,0.6);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+}
+.match-header .vs-text {
+  font-size: 1.6rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Score buttons row ────────────────────────────────────────── */
+.score-btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.score-btn-row .btn { flex: 1; }
+
+/* ── Team pool card ───────────────────────────────────────────── */
+.team-card {
+  background: linear-gradient(135deg, #f8f9fa, #eef0ec);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  border-left: 4px solid var(--green-sage);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+  position: relative;
+}
+.team-card .team-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-text);
+}
+.team-card .pool-label {
+  font-size: 0.82rem;
+  color: var(--green-leaf);
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+.team-card .delete-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--red-admin);
+  font-size: 1rem;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.team-card .delete-btn:hover { opacity: 1; }
+
+/* ── Game history expandable ──────────────────────────────────── */
+.game-history-item {
+  background: var(--white-soft);
+  border-radius: var(--radius);
+  margin-bottom: 0.6rem;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.game-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.2rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+.game-history-header:hover { background: rgba(164,184,124,0.06); }
+
+.game-history-header .title {
+  font-weight: 500;
+  font-size: 0.92rem;
+  flex: 1;
+}
+.game-history-header .winner-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--green-leaf);
+  white-space: nowrap;
+}
+.game-history-header .chevron {
+  font-size: 0.8rem;
+  color: var(--gray-sub);
+  transition: transform 0.2s;
+}
+.game-history-item.open .chevron { transform: rotate(180deg); }
+
+.game-history-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding: 0 1.2rem;
+}
+.game-history-item.open .game-history-body {
+  max-height: 300px;
+  padding: 0.5rem 1.2rem 1rem;
+}
+
+.game-history-body .set-line {
+  font-size: 0.88rem;
+  padding: 0.2rem 0;
+  color: var(--gray-text);
+}
+.game-history-body .meta {
+  font-size: 0.8rem;
+  color: var(--gray-sub);
+  margin-top: 0.4rem;
+}
+
+/* ── Section dividers ─────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  height: 1px;
+  background: rgba(45,90,45,0.1);
+  margin: 1.5rem 0;
+}
+
+/* ── Scoring layout (3 column) ────────────────────────────────── */
+.scoring-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .scoring-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .scoring-row .vs-text { padding: 0.3rem 0; }
+  .score-display { font-size: 2rem; }
+}
+
+/* ── Live game card ───────────────────────────────────────────── */
+.live-game-card {
+  background: var(--white-soft);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.8rem;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+  border: 1px solid rgba(164,184,124,0.15);
+}
+
+.live-game-card .set-scores {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--gray-sub);
+}
