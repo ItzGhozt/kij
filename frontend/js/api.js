@@ -6,8 +6,8 @@
   'use strict';
 
   // Base URL for the FastAPI backend (change in production)
-  var BASE = 'http://localhost:8000';
-  var WS_URL = 'ws://localhost:8000/ws';
+  var BASE = 'https://kij-backend.onrender.com';
+  var WS_URL = 'wss://kij-backend.onrender.com/ws';
 
   // ── HTTP helpers ────────────────────────────────────────────────
 
