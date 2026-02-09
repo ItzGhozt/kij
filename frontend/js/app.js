@@ -81,19 +81,19 @@
 
     function handleAdminToggle() {
       if (adminMode && authenticated) {
-        // Logout
+    // Logout
         setAdminMode(false);
         setAuthenticated(false);
         setPage('home');
         showToast('Logged out', 'success');
-      } else if (adminMode && !authenticated) {
-        // Already showing login
-      } else {
-        // Enter admin mode → show login
+  } else {
+    // Enter admin mode → show login
         setAdminMode(true);
         setPage('admin_login');
-      }
-    }
+  }
+}
+
+   
 
     function handleLogin() {
       setAuthenticated(true);
@@ -101,36 +101,36 @@
       showToast('Admin login successful!', 'success');
     }
 
-    // ── Render ──────────────────────────────────────────────────
-    var content;
+    // ── Render ──────────────────────────────────────────────────────
+var content;
 
-    if (adminMode && !authenticated) {
-      content = h(C.AdminLoginPage, { onLogin: handleLogin });
-    } else if (page === 'home') {
-      content = h(C.HomePage, { onNav: navigate });
-    } else if (page === 'teams') {
-      content = h(C.TeamsPage, {
-        teams: teams,
-        admin: adminMode,
-        authenticated: authenticated,
-        onTeamsChanged: loadAll,
-        showToast: showToast,
-      });
-    } else if (page === 'games') {
-      content = h(C.GamesPage, {
-        teams: teams,
-        games: games,
-        onGamesChanged: loadAll,
-        onNav: navigate,
-        showToast: showToast,
-      });
-    } else if (page === 'live') {
-      content = h(C.LivePage, {
-        teams: teams,
-        games: games,
-        onRefresh: loadAll,
-      });
-    }
+if (page === 'admin_login') {
+  content = h(C.AdminLoginPage, { onLogin: handleLogin });
+} else if (page === 'home') {
+  content = h(C.HomePage, { onNav: navigate });
+} else if (page === 'teams') {
+  content = h(C.TeamsPage, {
+    teams: teams,
+    admin: adminMode,
+    authenticated: authenticated,
+    onTeamsChanged: loadAll,
+    showToast: showToast,
+  });
+} else if (page === 'games') {
+  content = h(C.GamesPage, {
+    teams: teams,
+    games: games,
+    onGamesChanged: loadAll,
+    onNav: navigate,
+    showToast: showToast,
+  });
+} else if (page === 'live') {
+  content = h(C.LivePage, {
+    teams: teams,
+    games: games,
+    onRefresh: loadAll,
+  });
+}      
 
     return h('div', null,
       h(C.StatusBadge, { admin: adminMode, authenticated: authenticated }),
