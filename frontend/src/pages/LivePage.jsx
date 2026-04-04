@@ -39,99 +39,82 @@ function LiveGameCard({ gk, game }) {
       boxShadow: '0 8px 28px rgba(0,0,0,0.08)',
       border: '1px solid rgba(255,255,255,0.3)',
     }}>
+
+      {/* Team names */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
-        gap: '0.75rem',
-        marginBottom: '1.25rem',
+        gap: '0.5rem',
+        marginBottom: '1rem',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(0.95rem, 3vw, 1.2rem)',
-            fontWeight: 700,
-            color: 'var(--green-deep)',
-            marginBottom: '0.4rem',
-            wordBreak: 'break-word',
-          }}>
-            {game.team1}
-          </div>
-          <div style={{
-            fontSize: 'clamp(2.8rem, 10vw, 4rem)',
-            fontWeight: 800,
-            fontFamily: 'var(--font-display)',
-            color: t1Sets > t2Sets ? 'var(--green-leaf)' : 'var(--gray-text)',
-            lineHeight: 1,
-          }}>
-            {t1Sets}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--gray-sub)', marginTop: '0.25rem' }}>
-            sets won
-          </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 3.5vw, 1.3rem)', fontWeight: 700, color: 'var(--green-deep)', textAlign: 'center', wordBreak: 'break-word' }}>
+          {game.team1}
         </div>
-
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '1rem',
-          fontWeight: 700,
-          color: 'var(--gray-sub)',
-          textAlign: 'center',
-        }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--gray-sub)', textAlign: 'center' }}>
           VS
         </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(0.95rem, 3vw, 1.2rem)',
-            fontWeight: 700,
-            color: 'var(--green-deep)',
-            marginBottom: '0.4rem',
-            wordBreak: 'break-word',
-          }}>
-            {game.team2}
-          </div>
-          <div style={{
-            fontSize: 'clamp(2.8rem, 10vw, 4rem)',
-            fontWeight: 800,
-            fontFamily: 'var(--font-display)',
-            color: t2Sets > t1Sets ? 'var(--green-leaf)' : 'var(--gray-text)',
-            lineHeight: 1,
-          }}>
-            {t2Sets}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--gray-sub)', marginTop: '0.25rem' }}>
-            sets won
-          </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1rem, 3.5vw, 1.3rem)', fontWeight: 700, color: 'var(--green-deep)', textAlign: 'center', wordBreak: 'break-word' }}>
+          {game.team2}
         </div>
       </div>
 
+      {/* Set scores — big, prominent */}
+      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        {sets.map(([sk, s]) => {
+          const t1Winning = s.team1_score > s.team2_score;
+          const t2Winning = s.team2_score > s.team1_score;
+          return (
+            <div key={sk} style={{
+              background: 'rgba(164,184,124,0.12)',
+              borderRadius: '12px',
+              padding: '0.75rem 1.5rem',
+              textAlign: 'center',
+              minWidth: '130px',
+              flex: 1,
+            }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--gray-sub)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                {sk.replace('set', 'Set ')}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: 'clamp(2.2rem, 8vw, 3rem)', fontWeight: 800, fontFamily: 'var(--font-display)', color: t1Winning ? 'var(--green-leaf)' : 'var(--gray-text)', lineHeight: 1 }}>
+                  {s.team1_score}
+                </span>
+                <span style={{ fontSize: '1.2rem', color: 'var(--gray-sub)', fontWeight: 300 }}>–</span>
+                <span style={{ fontSize: 'clamp(2.2rem, 8vw, 3rem)', fontWeight: 800, fontFamily: 'var(--font-display)', color: t2Winning ? 'var(--green-leaf)' : 'var(--gray-text)', lineHeight: 1 }}>
+                  {s.team2_score}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Sets won — smaller, below */}
       <div style={{
         borderTop: '1px solid rgba(0,0,0,0.07)',
-        paddingTop: '1rem',
-        display: 'flex',
-        gap: '0.75rem',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
+        paddingTop: '0.75rem',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto 1fr',
+        alignItems: 'center',
+        gap: '0.5rem',
+        textAlign: 'center',
       }}>
-        {sets.map(([sk, s]) => (
-          <div key={sk} style={{
-            background: 'rgba(164,184,124,0.12)',
-            borderRadius: '10px',
-            padding: '0.5rem 1.1rem',
-            textAlign: 'center',
-            minWidth: '100px',
-          }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--gray-sub)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {sk.replace('set', 'Set ')}
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--green-deep)', fontFamily: 'var(--font-display)' }}>
-              {s.team1_score} – {s.team2_score}
-            </div>
-          </div>
-        ))}
+        <div>
+          <span style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, fontFamily: 'var(--font-display)', color: t1Sets > t2Sets ? 'var(--green-leaf)' : 'var(--gray-sub)' }}>
+            {t1Sets}
+          </span>
+          <div style={{ fontSize: '0.7rem', color: 'var(--gray-sub)' }}>sets won</div>
+        </div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--gray-sub)', fontWeight: 600 }}>SETS</div>
+        <div>
+          <span style={{ fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', fontWeight: 800, fontFamily: 'var(--font-display)', color: t2Sets > t1Sets ? 'var(--green-leaf)' : 'var(--gray-sub)' }}>
+            {t2Sets}
+          </span>
+          <div style={{ fontSize: '0.7rem', color: 'var(--gray-sub)' }}>sets won</div>
+        </div>
       </div>
+
     </div>
   );
 }
