@@ -202,7 +202,7 @@ async def create_game(body: GameCreate):
     return {"success": True, "game_key": game_key, "game": game_data}
 
 @app.post("/api/schedule/generate")
-async def generate_schedule(body: GenerateSchedule):
+async def generate_schedule():
     teams = load_all_teams()
     created = generate_pool_schedule(teams)
     all_games = load_all_games()
