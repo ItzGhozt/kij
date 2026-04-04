@@ -65,4 +65,7 @@
 @media (max-width: 600px) {
   .nav-bar { gap: 0.1rem; padding: 0.4rem 0; }
   .nav-btn { font-size: 0.75rem; padding: 0.35rem 0.55rem; letter-spacing: 0.3px; }
+
+  /* Hide the floating Player Portal badge — nav shows admin state already */
+  .status-badge { display: none; }
 }
