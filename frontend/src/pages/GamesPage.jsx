@@ -56,10 +56,11 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
 
       {Object.entries(game.sets).map(([setKey, scores]) => (
         <div key={setKey} className="card mb-3">
-          <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
             {setKey.replace('set', 'Set ')}
           </h3>
-          <div className="grid-2" style={{ gap: '2rem', alignItems: 'center' }}>
+          <div className="scoring-grid">
+            {/* Team 1 */}
             <div>
               <div className="score-display">
                 <div className="team-label">{game.team1}</div>
@@ -67,12 +68,16 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
               </div>
               {!game.completed && (
                 <div className="score-buttons">
-                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team1', 1)}>+ +1</button>
-                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team1', -1)}>− -1</button>
+                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team1', 1)}>+1</button>
+                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team1', -1)}>−1</button>
                 </div>
               )}
             </div>
-            <div style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-muted)' }}>VS</div>
+
+            {/* VS */}
+            <div className="vs-separator">VS</div>
+
+            {/* Team 2 */}
             <div>
               <div className="score-display">
                 <div className="team-label">{game.team2}</div>
@@ -80,8 +85,8 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
               </div>
               {!game.completed && (
                 <div className="score-buttons">
-                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team2', 1)}>+ +1</button>
-                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team2', -1)}>− -1</button>
+                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team2', 1)}>+1</button>
+                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team2', -1)}>−1</button>
                 </div>
               )}
             </div>
@@ -111,7 +116,7 @@ function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
       Object.entries(teams).filter(([, td]) => td.pool === pool).map(([name]) => name)
     );
     return Object.entries(games).filter(
-      ([, g]) => poolTeamSet.has(g.team1) && poolTeamSet.has(g.team2)
+      ([, g]) => g.scheduled && poolTeamSet.has(g.team1) && poolTeamSet.has(g.team2)
     );
   }
 

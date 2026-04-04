@@ -220,3 +220,93 @@
   font-size: 0.9rem;
   color: var(--gray-sub);
 }
+
+/* ── Scoring grid (team | VS | team) ──────────────────────────── */
+.scoring-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* ── Score display (container) ────────────────────────────────── */
+.score-display {
+  text-align: center;
+}
+
+.team-label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green-deep);
+  margin-bottom: 0.4rem;
+  word-break: break-word;
+}
+
+.score-number {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--green-leaf);
+  line-height: 1;
+  margin: 0.3rem 0 0.5rem;
+}
+
+/* ── Score +1 / -1 buttons ────────────────────────────────────── */
+.score-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.score-buttons .btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #4caf78, #2e7d52);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(76,175,120,0.35);
+}
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(76,175,120,0.5);
+}
+.btn-success:active { transform: translateY(0); }
+.btn-secondary:active { transform: translateY(0); }
+
+/* VS separator in scoring grid */
+.vs-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--gray-sub);
+}
+
+/* ── Mobile scoring ───────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .scoring-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .scoring-row .vs-text { padding: 0.3rem 0; }
+
+  .scoring-grid {
+    gap: 0.5rem;
+  }
+
+  .score-number { font-size: 3rem; }
+  .team-label { font-size: 0.85rem; }
+  .score-buttons .btn { min-height: 60px; font-size: 1.25rem; }
+
+  .card { padding: 1.2rem; }
+}
