@@ -1,4 +1,4 @@
-const WS_URL = 'wss://kij-backend.onrender.com/ws';
+const WS_URL = 'wss://kij.onrender.com/ws';
 
 let _ws = null;
 let _listeners = [];

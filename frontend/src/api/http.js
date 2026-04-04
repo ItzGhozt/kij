@@ -1,4 +1,4 @@
-const BASE = 'https://kij-backend.onrender.com';
+const BASE = 'https://kij.onrender.com';
 
 async function request(method, path, body) {
   const opts = {
