@@ -35,7 +35,7 @@ export default function App() {
 
   useEffect(() => {
     loadAll();
-    Api.getSettings().then(s => setPhase(s.phase || 'pool_play')).catch(() => {});
+    Api.getPhase().then(s => setPhase(s.phase || 'pool_play')).catch(() => {});
     WS.connect();
 
     function onWsMessage(msg) {
