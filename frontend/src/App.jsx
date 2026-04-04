@@ -19,48 +19,40 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [teams, setTeams] = useState({});
   const [games, setGames] = useState({});
+  const [phase, setPhase] = useState('pool_play');
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
-  // ── Toast ────────────────────────────────────────────────────
   function showToast(message, type = 'success') {
     setToast({ message, type });
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
-  // ── Data loaders ─────────────────────────────────────────────
-  function loadTeams() {
-    Api.getTeams().then(setTeams).catch(() => {});
-  }
-  function loadGames() {
-    Api.getGames().then(setGames).catch(() => {});
-  }
-  function loadAll() {
-    loadTeams();
-    loadGames();
-  }
+  function loadTeams() { Api.getTeams().then(setTeams).catch(() => {}); }
+  function loadGames() { Api.getGames().then(setGames).catch(() => {}); }
+  function loadAll() { loadTeams(); loadGames(); }
 
-  // ── Initial load + WebSocket ──────────────────────────────────
   useEffect(() => {
     loadAll();
+    Api.getSettings().then(s => setPhase(s.phase || 'pool_play')).catch(() => {});
     WS.connect();
 
     function onWsMessage(msg) {
       if (msg.type === 'init') {
         setTeams(msg.teams);
         setGames(msg.games);
+        if (msg.settings?.phase) setPhase(msg.settings.phase);
       } else if (msg.type === 'teams_updated') {
         setTeams(msg.teams);
-      } else if (
-        msg.type === 'score_updated' ||
-        msg.type === 'games_updated' ||
-        msg.type === 'game_completed'
-      ) {
+      } else if (['score_updated', 'games_updated', 'game_completed'].includes(msg.type)) {
         setGames(msg.games);
+      } else if (msg.type === 'phase_updated') {
+        setPhase(msg.phase);
       } else if (msg.type === 'tournament_reset') {
         setTeams({});
         setGames({});
+        setPhase('pool_play');
       }
     }
 
@@ -68,7 +60,6 @@ export default function App() {
     return () => WS.offMessage(onWsMessage);
   }, []);
 
-  // ── Navigation ────────────────────────────────────────────────
   function navigate(p) {
     setPage(p);
     if (p === 'live' || p === 'games') loadAll();
@@ -92,20 +83,21 @@ export default function App() {
     showToast('Admin login successful!', 'success');
   }
 
-  // ── Render ────────────────────────────────────────────────────
   function renderPage() {
     switch (page) {
-      case 'home':
-        return <HomePage onNav={navigate} />;
-      case 'admin_login':
-        return <AdminLoginPage onLogin={handleLogin} />;
+      case 'home': return <HomePage onNav={navigate} />;
+      case 'admin_login': return <AdminLoginPage onLogin={handleLogin} />;
       case 'teams':
         return (
           <TeamsPage
             teams={teams}
+            games={games}
             admin={adminMode}
             authenticated={authenticated}
+            phase={phase}
+            onPhaseChange={setPhase}
             onTeamsChanged={loadAll}
+            onGamesChanged={loadAll}
             showToast={showToast}
           />
         );
@@ -114,6 +106,9 @@ export default function App() {
           <GamesPage
             teams={teams}
             games={games}
+            phase={phase}
+            admin={adminMode}
+            authenticated={authenticated}
             onGamesChanged={loadAll}
             onNav={navigate}
             showToast={showToast}

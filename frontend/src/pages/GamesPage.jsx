@@ -297,7 +297,6 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         {[
           { key: 'score', label: '🎮 Score Game' },
-          { key: 'manual', label: '📋 Manual Game' },
           { key: 'history', label: '📜 Game History' },
         ].map(({ key, label }) => (
           <button
@@ -334,14 +333,6 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
             Playoff bracket scoring coming soon. Use Manual Game to score playoff matchups.
           </p>
         </div>
-      )}
-      {tab === 'manual' && (
-        <ManualGamePicker
-          teams={teams}
-          games={games}
-          onGamesChanged={onGamesChanged}
-          showToast={showToast}
-        />
       )}
       {tab === 'history' && (
         <GameHistory games={games} teams={teams} />
