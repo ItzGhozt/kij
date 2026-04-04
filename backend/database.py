@@ -295,6 +295,22 @@ def generate_pool_schedule(teams: dict) -> list:
 
 # ── Admin operations ─────────────────────────────────────────────
 
+def delete_games_only():
+    """Delete all games and scores but keep teams and phase."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM game_sets")
+            cur.execute("DELETE FROM games")
+            conn.commit()
+            return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
 def delete_all_data():
     conn = get_connection()
     try:

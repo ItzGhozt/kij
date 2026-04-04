@@ -25,4 +25,5 @@ export const Api = {
   setPhase: (phase) => request('POST', '/api/settings/phase', { phase }),
   generateSchedule: () => request('POST', '/api/schedule/generate'),
   resetTournament: () => request('POST', '/api/admin/reset'),
+  resetGames: () => request('POST', '/api/admin/reset-games'),
 };

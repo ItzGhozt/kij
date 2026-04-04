@@ -268,11 +268,13 @@ function TeamList({ teams, admin, onDelete }) {
 // ── Reset Tournament ──────────────────────────────────────────────
 
 function ResetTournament({ showToast, onReset }) {
-  const [confirm, setConfirm] = useState(false);
+  const [confirm, setConfirm] = useState(null); // null | 'all' | 'games'
 
   function doReset() {
-    Api.resetTournament()
-      .then(() => { showToast('Tournament reset', 'success'); onReset(); setConfirm(false); })
+    const fn = confirm === 'games' ? Api.resetGames : Api.resetTournament;
+    const msg = confirm === 'games' ? 'All matches reset — teams kept' : 'Tournament fully reset';
+    fn()
+      .then(() => { showToast(msg, 'success'); onReset(); setConfirm(null); })
       .catch((err) => showToast(err.message, 'error'));
   }
 
@@ -280,15 +282,24 @@ function ResetTournament({ showToast, onReset }) {
     <div className="card mb-3" style={{ borderColor: 'rgba(200,50,50,0.3)' }}>
       <h3 style={{ marginBottom: '0.75rem', color: '#c0392b' }}>Reset Tournament</h3>
       {!confirm ? (
-        <button className="btn btn-danger" onClick={() => setConfirm(true)}>Reset All Data</button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" onClick={() => setConfirm('games')}>
+            Reset Matches Only
+          </button>
+          <button className="btn btn-danger" onClick={() => setConfirm('all')}>
+            Reset All Data
+          </button>
+        </div>
       ) : (
         <div>
           <p style={{ marginBottom: '0.75rem', fontWeight: '600', fontSize: '0.9rem' }}>
-            Deletes ALL teams, games, and scores. Cannot be undone.
+            {confirm === 'games'
+              ? 'This will delete ALL games and scores but keep teams. Cannot be undone.'
+              : 'This will delete ALL teams, games, and scores. Cannot be undone.'}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn-danger" onClick={doReset}>Yes, Reset</button>
-            <button className="btn btn-secondary" onClick={() => setConfirm(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={doReset}>Yes, confirm</button>
+            <button className="btn btn-secondary" onClick={() => setConfirm(null)}>Cancel</button>
           </div>
         </div>
       )}

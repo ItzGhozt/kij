@@ -53,6 +53,8 @@ export default function App() {
         setTeams({});
         setGames({});
         setPhase('pool_play');
+      } else if (msg.type === 'games_reset') {
+        setGames({});
       }
     }
 

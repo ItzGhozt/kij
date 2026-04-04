@@ -19,6 +19,7 @@ from database import (
     load_all_games,
     save_game,
     delete_all_data,
+    delete_games_only,
     calculate_standings,
     get_all_settings,
     get_setting,
@@ -269,6 +270,14 @@ async def reset_tournament(body: AdminLogin):
     if not ok:
         raise HTTPException(status_code=500, detail="Reset failed")
     await manager.broadcast({"type": "tournament_reset"})
+    return {"success": True}
+
+@app.post("/api/admin/reset-games")
+async def reset_games_only():
+    ok = delete_games_only()
+    if not ok:
+        raise HTTPException(status_code=500, detail="Reset failed")
+    await manager.broadcast({"type": "games_reset", "games": {}})
     return {"success": True}
 
 
