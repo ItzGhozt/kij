@@ -8,6 +8,7 @@ function ScoreGamePanel({ teams, games, onGamesChanged, showToast }) {
   const [team1, setTeam1] = useState(teamNames[0] || '');
   const [team2, setTeam2] = useState(teamNames[1] || '');
   const [gameKey, setGameKey] = useState(null);
+  const [localScores, setLocalScores] = useState(null);
 
   const team2Options = teamNames.filter((n) => n !== team1);
 
@@ -15,29 +16,61 @@ function ScoreGamePanel({ teams, games, onGamesChanged, showToast }) {
     if (team2 === team1 && team2Options.length > 0) setTeam2(team2Options[0]);
   }, [team1]);
 
+  // Sync localScores when the server game data changes (e.g. from WebSocket)
+  // but only if we don't have a pending local edit
+  useEffect(() => {
+    const serverGame = gameKey && games[gameKey];
+    if (serverGame && !localScores) {
+      setLocalScores(JSON.parse(JSON.stringify(serverGame.sets)));
+    }
+  }, [games, gameKey]);
+
   function startGame() {
     if (!team1 || !team2 || team1 === team2) return;
     Api.createGame(team1, team2)
       .then((res) => {
         setGameKey(res.game_key);
+        setLocalScores({
+          set1: { team1_score: 0, team2_score: 0 },
+          set2: { team1_score: 0, team2_score: 0 },
+        });
         onGamesChanged();
       })
       .catch((err) => showToast(err.message, 'error'));
   }
 
   function changeScore(setKey, team, delta) {
-    Api.updateScore({ game_key: gameKey, set_key: setKey, team, delta }).then(onGamesChanged);
+    const scoreField = `${team}_score`;
+    // Optimistic update — instant UI response
+    setLocalScores((prev) => {
+      const current = prev[setKey][scoreField];
+      const newVal = Math.max(0, current + delta);
+      return { ...prev, [setKey]: { ...prev[setKey], [scoreField]: newVal } };
+    });
+    // Fire and forget — sync to server in background
+    Api.updateScore({ game_key: gameKey, set_key: setKey, team, delta })
+      .then(onGamesChanged)
+      .catch(() => {
+        // Revert on error
+        setLocalScores((prev) => {
+          const current = prev[setKey][scoreField];
+          return { ...prev, [setKey]: { ...prev[setKey], [scoreField]: Math.max(0, current - delta) } };
+        });
+        showToast('Score update failed', 'error');
+      });
   }
 
   function finish() {
     Api.completeGame(gameKey).then((res) => {
       showToast(`Game completed! Winner: ${res.winner}`, 'success');
       setGameKey(null);
+      setLocalScores(null);
       onGamesChanged();
     });
   }
 
-  const game = gameKey && games[gameKey];
+  const serverGame = gameKey && games[gameKey];
+  const game = serverGame ? { ...serverGame, sets: localScores || serverGame.sets } : null;
 
   if (!gameKey) {
     return (
