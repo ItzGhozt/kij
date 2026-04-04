@@ -266,10 +266,11 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
   if (!admin || !authenticated) {
     return (
       <div className="container">
-        <h1>Admin Panel</h1>
-        <div className="card">
-          <p style={{ color: 'var(--text-muted)' }}>Login as admin to manage the tournament.</p>
-        </div>
+        <h1>Teams</h1>
+        <TeamList teams={teams} admin={false} onDelete={() => {}} />
+        <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          Admin login required to add, remove, or manage teams.
+        </p>
       </div>
     );
   }
