@@ -51,11 +51,7 @@ function ManualGamePicker({ teams, onGamesChanged, showToast }) {
           {team2Options.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
       </div>
-      <button
-        className="btn btn-primary"
-        onClick={startGame}
-        disabled={!team1 || !team2 || team1 === team2}
-      >
+      <button className="btn btn-primary" onClick={startGame} disabled={!team1 || !team2 || team1 === team2}>
         🌐 Start Game
       </button>
     </div>
@@ -102,18 +98,13 @@ function PhaseControl({ phase, onPhaseChange, showToast, teams, games }) {
             const active = phase === p;
             const color = p === 'playoffs' ? '#c0392b' : 'var(--primary)';
             return (
-              <button
-                key={p}
-                onClick={() => switchPhase(p)}
-                disabled={loading}
-                style={{
-                  padding: '0.5rem 1.5rem', borderRadius: '20px', border: '1px solid',
-                  cursor: 'pointer', fontWeight: '600',
-                  background: active ? color : 'transparent',
-                  borderColor: active ? color : 'rgba(0,0,0,0.2)',
-                  color: active ? 'white' : 'inherit',
-                }}
-              >
+              <button key={p} onClick={() => switchPhase(p)} disabled={loading} style={{
+                padding: '0.5rem 1.5rem', borderRadius: '20px', border: '1px solid',
+                cursor: 'pointer', fontWeight: '600',
+                background: active ? color : 'transparent',
+                borderColor: active ? color : 'rgba(0,0,0,0.2)',
+                color: active ? 'white' : 'inherit',
+              }}>
                 {label}
               </button>
             );
@@ -160,12 +151,7 @@ function AddTeamForm({ onAdd, showToast }) {
     if (!teamName.trim()) { showToast('Team name required', 'error'); return; }
     setLoading(true);
     Api.createTeam({ team_name: teamName.trim(), player1: '', player2: '', pool })
-      .then(() => {
-        showToast(`"${teamName}" added to Pool ${pool}`, 'success');
-        setTeamName('');
-        setPool('A');
-        onAdd();
-      })
+      .then(() => { showToast(`"${teamName}" added to Pool ${pool}`, 'success'); setTeamName(''); setPool('A'); onAdd(); })
       .catch((err) => showToast(err.message, 'error'))
       .finally(() => setLoading(false));
   }
@@ -206,7 +192,6 @@ function TeamList({ teams, onDelete }) {
     if (!byPool[p]) byPool[p] = [];
     byPool[p].push(name);
   });
-
   const activePools = pools.filter((p) => byPool[p]?.length > 0);
 
   return (
@@ -214,30 +199,24 @@ function TeamList({ teams, onDelete }) {
       <h3 style={{ marginBottom: '1rem' }}>Registered Teams</h3>
       {activePools.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No teams yet.</p>
-      ) : (
-        activePools.map((pool) => (
-          <div key={pool} style={{ marginBottom: '0.75rem' }}>
-            <div style={{ fontWeight: '600', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>
-              POOL {pool}
-            </div>
-            {byPool[pool].map((name) => (
-              <div key={name} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.4rem 0', borderBottom: '1px solid rgba(0,0,0,0.06)',
-              }}>
-                <span style={{ fontWeight: '500' }}>{name}</span>
-                <button
-                  className="btn btn-danger"
-                  style={{ fontSize: '0.78rem', padding: '3px 10px' }}
-                  onClick={() => onDelete(name)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
+      ) : activePools.map((pool) => (
+        <div key={pool} style={{ marginBottom: '0.75rem' }}>
+          <div style={{ fontWeight: '600', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>
+            POOL {pool}
           </div>
-        ))
-      )}
+          {byPool[pool].map((name) => (
+            <div key={name} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.4rem 0', borderBottom: '1px solid rgba(0,0,0,0.06)',
+            }}>
+              <span style={{ fontWeight: '500' }}>{name}</span>
+              <button className="btn btn-danger" style={{ fontSize: '0.78rem', padding: '3px 10px' }} onClick={() => onDelete(name)}>
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -276,6 +255,8 @@ function ResetTournament({ showToast, onReset }) {
 // ── Main TeamsPage ────────────────────────────────────────────────
 
 export default function TeamsPage({ teams, games = {}, admin, authenticated, phase, onPhaseChange, onTeamsChanged, onGamesChanged, showToast }) {
+  const [activePanel, setActivePanel] = useState('tournament');
+
   function deleteTeam(name) {
     Api.deleteTeam(name)
       .then(() => { showToast(`Removed ${name}`, 'success'); onTeamsChanged(); })
@@ -293,25 +274,69 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
     );
   }
 
+  const panels = [
+    { key: 'tournament', label: '🏐 Tournament' },
+    { key: 'teams',      label: '👥 Teams' },
+  ];
+
   return (
     <div className="container">
       <h1>Admin Panel</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
-        {/* Panel 1: Game controls */}
+      {/* Panel switcher */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+        {panels.map(({ key, label }) => {
+          const active = activePanel === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActivePanel(key)}
+              style={{
+                flex: 1,
+                padding: '1rem',
+                borderRadius: '12px',
+                border: `2px solid ${active ? 'var(--primary)' : 'rgba(0,0,0,0.1)'}`,
+                background: active ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                color: active ? 'white' : 'inherit',
+                fontWeight: '700',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: active ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Panel 1: Tournament controls */}
+      {activePanel === 'tournament' && (
         <div>
-          <ManualGamePicker teams={teams} onGamesChanged={onGamesChanged || onTeamsChanged} showToast={showToast} />
-          <PhaseControl phase={phase} onPhaseChange={onPhaseChange} showToast={showToast} teams={teams} games={games} />
+          <PhaseControl
+            phase={phase}
+            onPhaseChange={onPhaseChange}
+            showToast={showToast}
+            teams={teams}
+            games={games}
+          />
+          <ManualGamePicker
+            teams={teams}
+            onGamesChanged={onGamesChanged || onTeamsChanged}
+            showToast={showToast}
+          />
         </div>
+      )}
 
-        {/* Panel 2: Team management */}
+      {/* Panel 2: Team management */}
+      {activePanel === 'teams' && (
         <div>
           <AddTeamForm onAdd={onTeamsChanged} showToast={showToast} />
           <TeamList teams={teams} onDelete={deleteTeam} />
           <ResetTournament showToast={showToast} onReset={onTeamsChanged} />
         </div>
-
-      </div>
+      )}
     </div>
   );
 }
