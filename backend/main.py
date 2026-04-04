@@ -35,9 +35,9 @@ app = FastAPI(title="KIJ Volleyball Tournament API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://itzghozt.github.io",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
+        "https://kij-lime.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5500"
     ],
     allow_credentials=True,
     allow_methods=["*"],
