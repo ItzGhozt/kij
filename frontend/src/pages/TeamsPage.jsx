@@ -184,7 +184,7 @@ function AddTeamForm({ onAdd, showToast }) {
 
 // ── Registered Teams ──────────────────────────────────────────────
 
-function TeamList({ teams, onDelete }) {
+function TeamList({ teams, admin, onDelete }) {
   const pools = ['A', 'B', 'C', 'D', 'E'];
   const byPool = {};
   Object.entries(teams).forEach(([name, td]) => {
@@ -194,29 +194,73 @@ function TeamList({ teams, onDelete }) {
   });
   const activePools = pools.filter((p) => byPool[p]?.length > 0);
 
+  if (activePools.length === 0) {
+    return (
+      <div className="card mb-3">
+        <h3 style={{ marginBottom: '0.5rem' }}>Registered Teams</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No teams registered yet.</p>
+      </div>
+    );
+  }
+
+  const poolColors = {
+    A: { bg: 'rgba(80,140,80,0.12)', border: 'rgba(80,140,80,0.3)', text: '#2d5a2d' },
+    B: { bg: 'rgba(60,100,180,0.10)', border: 'rgba(60,100,180,0.25)', text: '#1a3a7a' },
+    C: { bg: 'rgba(160,100,30,0.10)', border: 'rgba(160,100,30,0.25)', text: '#6b3f0f' },
+    D: { bg: 'rgba(130,60,160,0.10)', border: 'rgba(130,60,160,0.25)', text: '#5a1a6a' },
+    E: { bg: 'rgba(180,50,50,0.10)',  border: 'rgba(180,50,50,0.25)',  text: '#7a1a1a' },
+  };
+
   return (
     <div className="card mb-3">
-      <h3 style={{ marginBottom: '1rem' }}>Registered Teams</h3>
-      {activePools.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No teams yet.</p>
-      ) : activePools.map((pool) => (
-        <div key={pool} style={{ marginBottom: '0.75rem' }}>
-          <div style={{ fontWeight: '600', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.3rem', letterSpacing: '0.05em' }}>
-            POOL {pool}
-          </div>
-          {byPool[pool].map((name) => (
-            <div key={name} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '0.4rem 0', borderBottom: '1px solid rgba(0,0,0,0.06)',
-            }}>
-              <span style={{ fontWeight: '500' }}>{name}</span>
-              <button className="btn btn-danger" style={{ fontSize: '0.78rem', padding: '3px 10px' }} onClick={() => onDelete(name)}>
-                Remove
-              </button>
+      <h3 style={{ marginBottom: '1.25rem' }}>Registered Teams</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {activePools.map((pool) => {
+          const c = poolColors[pool] || poolColors.A;
+          return (
+            <div key={pool}>
+              <div style={{
+                display: 'inline-block',
+                fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.08em',
+                color: c.text, background: c.bg,
+                border: `1px solid ${c.border}`,
+                borderRadius: '20px', padding: '2px 12px',
+                marginBottom: '0.6rem',
+              }}>
+                POOL {pool} · {byPool[pool].length} team{byPool[pool].length !== 1 ? 's' : ''}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {byPool[pool].map((name) => (
+                  <div key={name} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    background: 'rgba(255,255,255,0.65)',
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    fontSize: '0.9rem', fontWeight: '500',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  }}>
+                    {name}
+                    {admin && (
+                      <button
+                        onClick={() => onDelete(name)}
+                        title={`Remove ${name}`}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'rgba(180,50,50,0.6)', fontSize: '0.85rem',
+                          padding: '0 0 0 2px', lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      ))}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -334,7 +378,7 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
       {activePanel === 'teams' && (
         <div>
           <AddTeamForm onAdd={onTeamsChanged} showToast={showToast} />
-          <TeamList teams={teams} onDelete={deleteTeam} />
+          <TeamList teams={teams} admin={true} onDelete={deleteTeam} />
           <ResetTournament showToast={showToast} onReset={onTeamsChanged} />
         </div>
       )}
