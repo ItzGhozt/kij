@@ -2,22 +2,20 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+from itertools import combinations
 from dotenv import load_dotenv
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-
 SETS_PER_GAME = 2
 
 
 def get_connection():
-    """Get a new database connection."""
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
 def init_tables():
-    """Create tables if they don't exist."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -39,8 +37,16 @@ def init_tables():
                     completed BOOLEAN DEFAULT FALSE,
                     winner VARCHAR(255),
                     start_time TIMESTAMP,
-                    end_time TIMESTAMP
+                    end_time TIMESTAMP,
+                    pool VARCHAR(1),
+                    scheduled BOOLEAN DEFAULT FALSE
                 );
+            """)
+            cur.execute("""
+                ALTER TABLE games ADD COLUMN IF NOT EXISTS pool VARCHAR(1);
+            """)
+            cur.execute("""
+                ALTER TABLE games ADD COLUMN IF NOT EXISTS scheduled BOOLEAN DEFAULT FALSE;
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS game_sets (
@@ -52,7 +58,55 @@ def init_tables():
                     UNIQUE(game_id, set_number)
                 );
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS tournament_settings (
+                    key VARCHAR(255) PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+            """)
+            cur.execute("""
+                INSERT INTO tournament_settings (key, value)
+                VALUES ('phase', 'pool_play')
+                ON CONFLICT (key) DO NOTHING;
+            """)
             conn.commit()
+    finally:
+        conn.close()
+
+
+# ── Settings ─────────────────────────────────────────────────────
+
+def get_setting(key: str) -> str:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT value FROM tournament_settings WHERE key = %s", (key,))
+            row = cur.fetchone()
+            return row["value"] if row else None
+    finally:
+        conn.close()
+
+
+def set_setting(key: str, value: str):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO tournament_settings (key, value)
+                VALUES (%s, %s)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            """, (key, value))
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def get_all_settings() -> dict:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT key, value FROM tournament_settings")
+            return {row["key"]: row["value"] for row in cur.fetchall()}
     finally:
         conn.close()
 
@@ -60,26 +114,23 @@ def init_tables():
 # ── Team operations ──────────────────────────────────────────────
 
 def load_all_teams():
-    """Return dict of all teams keyed by team_name."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT team_name, player1, player2, pool FROM teams ORDER BY team_name")
-            rows = cur.fetchall()
             return {
                 row["team_name"]: {
                     "player1": row["player1"],
                     "player2": row["player2"],
                     "pool": row["pool"],
                 }
-                for row in rows
+                for row in cur.fetchall()
             }
     finally:
         conn.close()
 
 
 def save_team(team_name: str, player1: str, player2: str, pool: str):
-    """Insert a new team. Returns True on success."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -97,7 +148,6 @@ def save_team(team_name: str, player1: str, player2: str, pool: str):
 
 
 def delete_team(team_name: str):
-    """Delete a team by name."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -111,20 +161,18 @@ def delete_team(team_name: str):
 # ── Game operations ──────────────────────────────────────────────
 
 def load_all_games():
-    """Return dict of all games keyed by game_key, with nested set scores."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT g.game_key, g.team1_name, g.team2_name, g.completed, g.winner,
-                       g.start_time, g.end_time,
+                       g.start_time, g.end_time, g.pool, g.scheduled,
                        gs.set_number, gs.team1_score, gs.team2_score
                 FROM games g
                 LEFT JOIN game_sets gs ON g.id = gs.game_id
                 ORDER BY g.id, gs.set_number
             """)
             rows = cur.fetchall()
-
             games = {}
             for row in rows:
                 gk = row["game_key"]
@@ -136,6 +184,8 @@ def load_all_games():
                         "winner": row["winner"],
                         "start_time": row["start_time"].isoformat() if row["start_time"] else None,
                         "end_time": row["end_time"].isoformat() if row["end_time"] else None,
+                        "pool": row["pool"],
+                        "scheduled": row["scheduled"] or False,
                         "sets": {
                             "set1": {"team1_score": 0, "team2_score": 0},
                             "set2": {"team1_score": 0, "team2_score": 0},
@@ -153,13 +203,13 @@ def load_all_games():
 
 
 def save_game(game_key: str, game_data: dict):
-    """Upsert a game and its set scores."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO games (game_key, team1_name, team2_name, completed, winner, start_time, end_time)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO games (game_key, team1_name, team2_name, completed, winner,
+                                   start_time, end_time, pool, scheduled)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (game_key)
                 DO UPDATE SET
                     completed = EXCLUDED.completed,
@@ -174,9 +224,10 @@ def save_game(game_key: str, game_data: dict):
                 game_data.get("winner"),
                 datetime.fromisoformat(game_data["start_time"]) if game_data.get("start_time") else None,
                 datetime.fromisoformat(game_data["end_time"]) if game_data.get("end_time") else None,
+                game_data.get("pool"),
+                game_data.get("scheduled", False),
             ))
             game_id = cur.fetchone()["id"]
-
             for set_num in range(1, SETS_PER_GAME + 1):
                 sk = f"set{set_num}"
                 if sk in game_data.get("sets", {}):
@@ -188,8 +239,7 @@ def save_game(game_key: str, game_data: dict):
                             team1_score = EXCLUDED.team1_score,
                             team2_score = EXCLUDED.team2_score
                     """, (
-                        game_id,
-                        set_num,
+                        game_id, set_num,
                         game_data["sets"][sk]["team1_score"],
                         game_data["sets"][sk]["team2_score"],
                     ))
@@ -202,16 +252,57 @@ def save_game(game_key: str, game_data: dict):
         conn.close()
 
 
+def generate_pool_schedule(teams: dict) -> list:
+    """Generate round-robin schedule for each pool. Skips pairs that already exist."""
+    pools = {}
+    for team_name, td in teams.items():
+        pool = td.get("pool", "A")
+        pools.setdefault(pool, []).append(team_name)
+
+    # Fetch existing game keys so we never overwrite (and reset scores on) existing games
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT game_key FROM games")
+            existing_keys = {row["game_key"] for row in cur.fetchall()}
+    finally:
+        conn.close()
+
+    created = []
+    for pool, pool_teams in pools.items():
+        for team1, team2 in combinations(sorted(pool_teams), 2):
+            game_key = f"pool_{pool}_{team1}_vs_{team2}"
+            if game_key in existing_keys:
+                continue  # already exists — never overwrite
+            game_data = {
+                "team1": team1,
+                "team2": team2,
+                "pool": pool,
+                "scheduled": True,
+                "sets": {
+                    "set1": {"team1_score": 0, "team2_score": 0},
+                    "set2": {"team1_score": 0, "team2_score": 0},
+                },
+                "completed": False,
+                "winner": None,
+                "start_time": datetime.now().isoformat(),
+                "end_time": None,
+            }
+            if save_game(game_key, game_data):
+                created.append(game_key)
+    return created
+
+
 # ── Admin operations ─────────────────────────────────────────────
 
 def delete_all_data():
-    """Wipe all tournament data (teams + games + sets)."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM game_sets")
             cur.execute("DELETE FROM games")
             cur.execute("DELETE FROM teams")
+            cur.execute("UPDATE tournament_settings SET value = 'pool_play' WHERE key = 'phase'")
             conn.commit()
             return True
     except Exception:
@@ -224,10 +315,6 @@ def delete_all_data():
 # ── Standings calculation ────────────────────────────────────────
 
 def calculate_standings(teams: dict, games: dict):
-    """
-    Pure function: compute standings from teams + games dicts.
-    Returns list of dicts sorted by set_wins desc, then point_differential desc.
-    """
     standings = {}
     for team_name, td in teams.items():
         standings[team_name] = {
@@ -247,27 +334,22 @@ def calculate_standings(teams: dict, games: dict):
         t1, t2 = gd["team1"], gd["team2"]
         if t1 not in standings or t2 not in standings:
             continue
-
         standings[t1]["games_played"] += 1
         standings[t2]["games_played"] += 1
-
         for sn in range(1, SETS_PER_GAME + 1):
             sk = f"set{sn}"
             s1 = gd["sets"][sk]["team1_score"]
             s2 = gd["sets"][sk]["team2_score"]
-
             standings[t1]["points_for"] += s1
             standings[t1]["points_against"] += s2
             standings[t2]["points_for"] += s2
             standings[t2]["points_against"] += s1
-
             if s1 > s2:
                 standings[t1]["set_wins"] += 1
                 standings[t2]["set_losses"] += 1
             elif s2 > s1:
                 standings[t2]["set_wins"] += 1
                 standings[t1]["set_losses"] += 1
-
         standings[t1]["point_differential"] = standings[t1]["points_for"] - standings[t1]["points_against"]
         standings[t2]["point_differential"] = standings[t2]["points_for"] - standings[t2]["points_against"]
 
