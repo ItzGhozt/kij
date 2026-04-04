@@ -5,6 +5,7 @@ import { Api } from '../api/http';
 
 function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   const [localScores, setLocalScores] = useState(null);
+  const [finishing, setFinishing] = useState(false);
   const serverGame = gameKey && games[gameKey];
 
   useEffect(() => {
@@ -14,6 +15,7 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   }, [games, gameKey]);
 
   function changeScore(setKey, team, delta) {
+    if (finishing) return; // block any clicks after Complete is pressed
     const scoreField = `${team}_score`;
     setLocalScores((prev) => {
       const cur = prev[setKey][scoreField];
@@ -31,10 +33,14 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   }
 
   function finish() {
+    setFinishing(true); // immediately lock all score buttons
     Api.completeGame(gameKey).then((res) => {
       showToast(`Game completed! Winner: ${res.winner}`, 'success');
       onBack();
       onGamesChanged();
+    }).catch((err) => {
+      showToast(err.message, 'error');
+      setFinishing(false); // unlock if complete itself failed
     });
   }
 
@@ -68,8 +74,8 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
               </div>
               {!game.completed && (
                 <div className="score-buttons">
-                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team1', 1)}>+1</button>
-                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team1', -1)}>−1</button>
+                  <button className="btn btn-success" disabled={finishing} onClick={() => changeScore(setKey, 'team1', 1)}>+1</button>
+                  <button className="btn btn-secondary" disabled={finishing} onClick={() => changeScore(setKey, 'team1', -1)}>−1</button>
                 </div>
               )}
             </div>
@@ -85,8 +91,8 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
               </div>
               {!game.completed && (
                 <div className="score-buttons">
-                  <button className="btn btn-success" onClick={() => changeScore(setKey, 'team2', 1)}>+1</button>
-                  <button className="btn btn-secondary" onClick={() => changeScore(setKey, 'team2', -1)}>−1</button>
+                  <button className="btn btn-success" disabled={finishing} onClick={() => changeScore(setKey, 'team2', 1)}>+1</button>
+                  <button className="btn btn-secondary" disabled={finishing} onClick={() => changeScore(setKey, 'team2', -1)}>−1</button>
                 </div>
               )}
             </div>
@@ -96,7 +102,14 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
 
       {!game.completed && (
         <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <button className="btn btn-primary" onClick={finish}>Complete Game</button>
+          <button
+            className="btn btn-primary"
+            onClick={finish}
+            disabled={finishing}
+            style={{ minWidth: '160px' }}
+          >
+            {finishing ? 'Saving...' : 'Complete Game'}
+          </button>
         </div>
       )}
     </div>
