@@ -265,7 +265,7 @@ def get_standings():
 # ── Admin reset ───────────────────────────────────────────────────
 
 @app.post("/api/admin/reset")
-async def reset_tournament(body: AdminLogin):
+async def reset_tournament():
     ok = delete_all_data()
     if not ok:
         raise HTTPException(status_code=500, detail="Reset failed")
