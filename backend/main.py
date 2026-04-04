@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from typing import List
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -34,14 +34,18 @@ app = FastAPI(title="KIJ Volleyball Tournament API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in production
+    allow_origins=[
+        "https://itzghozt.github.io",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ── Pydantic models ─────────────────────────────────────────────
+# ── Pydantic models ──────────────────────────────────────────────
 
 class TeamCreate(BaseModel):
     team_name: str
@@ -62,9 +66,9 @@ class GameCreate(BaseModel):
 
 class ScoreUpdate(BaseModel):
     game_key: str
-    set_key: str          # "set1" or "set2"
-    team: str             # "team1" or "team2"
-    delta: int            # +1 or -1
+    set_key: str   # "set1" or "set2"
+    team: str      # "team1" or "team2"
+    delta: int     # +1 or -1
 
 
 class CompleteGame(BaseModel):
@@ -79,8 +83,6 @@ class AdminLogin(BaseModel):
 # ── WebSocket manager ────────────────────────────────────────────
 
 class ConnectionManager:
-    """Manages active WebSocket connections and broadcasts updates."""
-
     def __init__(self):
         self.active: List[WebSocket] = []
 
@@ -121,16 +123,12 @@ def _verify(password: str) -> bool:
 
 # ── REST endpoints ───────────────────────────────────────────────
 
-# --- Auth ---
-
 @app.post("/api/auth/login")
 def login(body: AdminLogin):
     if body.username == ADMIN_USERNAME and _verify(body.password):
         return {"success": True, "message": "Authenticated"}
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
-
-# --- Teams ---
 
 @app.get("/api/teams")
 def get_teams():
@@ -144,11 +142,9 @@ async def create_team(body: TeamCreate):
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_TEAMS} teams allowed")
     if body.team_name in teams:
         raise HTTPException(status_code=400, detail="Team name already exists")
-
     ok = save_team(body.team_name, body.player1, body.player2, body.pool)
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to save team")
-
     await manager.broadcast({"type": "teams_updated", "teams": load_all_teams()})
     return {"success": True, "team_name": body.team_name}
 
@@ -161,8 +157,6 @@ async def remove_team(team_name: str):
     await manager.broadcast({"type": "teams_updated", "teams": load_all_teams()})
     return {"success": True}
 
-
-# --- Games ---
 
 @app.get("/api/games")
 def get_games():
@@ -194,19 +188,15 @@ async def update_score(body: ScoreUpdate):
     games = load_all_games()
     if body.game_key not in games:
         raise HTTPException(status_code=404, detail="Game not found")
-
     game = games[body.game_key]
     if game["completed"]:
         raise HTTPException(status_code=400, detail="Game already completed")
 
     score_field = f"{body.team}_score"
     current = game["sets"][body.set_key][score_field]
-    new_val = max(0, current + body.delta)
-    game["sets"][body.set_key][score_field] = new_val
+    game["sets"][body.set_key][score_field] = max(0, current + body.delta)
 
     save_game(body.game_key, game)
-
-    # Broadcast the live update
     all_games = load_all_games()
     await manager.broadcast({"type": "score_updated", "game_key": body.game_key, "games": all_games})
     return {"success": True, "game": all_games[body.game_key]}
@@ -217,8 +207,8 @@ async def complete_game(body: CompleteGame):
     games = load_all_games()
     if body.game_key not in games:
         raise HTTPException(status_code=404, detail="Game not found")
-
     game = games[body.game_key]
+
     t1_sets, t2_sets = 0, 0
     for sn in range(1, SETS_PER_GAME + 1):
         sk = f"set{sn}"
@@ -245,16 +235,10 @@ async def complete_game(body: CompleteGame):
     return {"success": True, "winner": game["winner"]}
 
 
-# --- Standings ---
-
 @app.get("/api/standings")
 def get_standings():
-    teams = load_all_teams()
-    games = load_all_games()
-    return calculate_standings(teams, games)
+    return calculate_standings(load_all_teams(), load_all_games())
 
-
-# --- Admin reset ---
 
 @app.post("/api/admin/reset")
 async def reset_tournament():
@@ -271,13 +255,11 @@ async def reset_tournament():
 async def websocket_endpoint(ws: WebSocket):
     await manager.connect(ws)
     try:
-        # Send initial state
         await ws.send_json({
             "type": "init",
             "teams": load_all_teams(),
             "games": load_all_games(),
         })
-        # Keep alive – listen for client pings
         while True:
             data = await ws.receive_text()
             if data == "ping":
@@ -291,20 +273,3 @@ async def websocket_endpoint(ws: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-# --- CORS middleware -------
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://itzghozt.github.io",  # Your GitHub Pages URL
-        "http://localhost:5500",       # For local testing
-        "http://127.0.0.1:5500"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)

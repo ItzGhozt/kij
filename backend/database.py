@@ -1,13 +1,10 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
@@ -16,8 +13,7 @@ SETS_PER_GAME = 2
 
 def get_connection():
     """Get a new database connection."""
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
 def init_tables():
@@ -70,14 +66,14 @@ def load_all_teams():
         with conn.cursor() as cur:
             cur.execute("SELECT team_name, player1, player2, pool FROM teams ORDER BY team_name")
             rows = cur.fetchall()
-            teams = {}
-            for row in rows:
-                teams[row["team_name"]] = {
+            return {
+                row["team_name"]: {
                     "player1": row["player1"],
                     "player2": row["player2"],
                     "pool": row["pool"],
                 }
-            return teams
+                for row in rows
+            }
     finally:
         conn.close()
 
@@ -230,7 +226,7 @@ def delete_all_data():
 def calculate_standings(teams: dict, games: dict):
     """
     Pure function: compute standings from teams + games dicts.
-    Returns list of dicts sorted by set_wins desc, point_differential desc.
+    Returns list of dicts sorted by set_wins desc, then point_differential desc.
     """
     standings = {}
     for team_name, td in teams.items():
@@ -275,9 +271,8 @@ def calculate_standings(teams: dict, games: dict):
         standings[t1]["point_differential"] = standings[t1]["points_for"] - standings[t1]["points_against"]
         standings[t2]["point_differential"] = standings[t2]["points_for"] - standings[t2]["points_against"]
 
-    result = sorted(
+    return sorted(
         standings.values(),
         key=lambda x: (x["set_wins"], x["point_differential"]),
         reverse=True,
     )
-    return result
