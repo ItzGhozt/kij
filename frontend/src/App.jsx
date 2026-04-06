@@ -41,7 +41,9 @@ export default function App() {
   const [games, setGames] = useState({});
   const [phase, setPhase] = useState('pool_play');
   const [toast, setToast] = useState(null);
+  const [ready, setReady] = useState(false);
   const toastTimer = useRef(null);
+  const retryTimer = useRef(null);
 
   function showToast(message, type = 'success') {
     setToast({ message, type });
@@ -49,21 +51,28 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
-  function loadTeams() { Api.getTeams().then(setTeams).catch(() => {}); }
-  function loadGames() { Api.getGames().then(setGames).catch(() => {}); }
-  function loadAll() { loadTeams(); loadGames(); }
+  function loadAll() {
+    Promise.all([Api.getTeams(), Api.getGames(), Api.getPhase()])
+      .then(([t, g, p]) => {
+        setTeams(t);
+        setGames(g);
+        setPhase(p.phase || 'pool_play');
+        setReady(true);
+        clearTimeout(retryTimer.current);
+      })
+      .catch(() => {
+        retryTimer.current = setTimeout(loadAll, 5000);
+      });
+  }
 
   useEffect(() => {
-    function onPopState() {
-      setPage(pageFromUrl());
-    }
+    function onPopState() { setPage(pageFromUrl()); }
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
     loadAll();
-    Api.getPhase().then(s => setPhase(s.phase || 'pool_play')).catch(() => {});
     WS.connect();
 
     function onWsMessage(msg) {
@@ -71,6 +80,8 @@ export default function App() {
         setTeams(msg.teams);
         setGames(msg.games);
         if (msg.settings?.phase) setPhase(msg.settings.phase);
+        setReady(true);
+        clearTimeout(retryTimer.current);
       } else if (msg.type === 'teams_updated') {
         setTeams(msg.teams);
       } else if (['score_updated', 'games_updated', 'game_completed'].includes(msg.type)) {
@@ -153,6 +164,25 @@ export default function App() {
       default:
         return <HomePage onNav={navigate} />;
     }
+  }
+
+  if (!ready) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--cream)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '1.5rem',
+      }}>
+        <img src="/logo.png" alt="KIJ Volleyball" style={{ width: 120, height: 120, objectFit: 'contain', opacity: 0.85 }} />
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', letterSpacing: '3px', color: 'var(--navy)', textTransform: 'uppercase' }}>
+          Connecting...
+        </p>
+      </div>
+    );
   }
 
   return (
