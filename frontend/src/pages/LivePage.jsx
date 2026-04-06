@@ -129,7 +129,6 @@ export default function LivePage({ teams, games, onRefresh }) {
   }, [games]);
 
   const activeByPool = getActiveByPool(games, teams);
-  const activePools = Object.keys(activeByPool).sort();
 
   return (
     <div className="container">
@@ -137,34 +136,42 @@ export default function LivePage({ teams, games, onRefresh }) {
         <span className="live-dot" /> Live Scores
       </h1>
 
-      {activePools.length === 0 ? (
-        <div className="info-box mb-3">
-          No games currently in progress. Scores appear here automatically once scoring starts.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
-          {activePools.map((pool) => {
-            const { key, game } = activeByPool[pool];
-            return (
-              <div key={key}>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
-                  marginBottom: '0.6rem',
-                  fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em',
-                  color: '#2d5a2d',
-                  background: 'rgba(80,140,80,0.12)',
-                  border: '1px solid rgba(80,140,80,0.25)',
-                  borderRadius: '20px', padding: '3px 12px',
-                }}>
-                  <span className="live-dot" style={{ width: 7, height: 7, margin: 0 }} />
-                  POOL {pool} — LIVE
-                </div>
-                <LiveGameCard gk={key} game={game} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
+        {['A', 'B', 'C'].map((pool) => {
+          const active = activeByPool[pool];
+          return (
+            <div key={pool}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                marginBottom: '0.6rem',
+                fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em',
+                color: active ? '#2d5a2d' : 'var(--gray-sub)',
+                background: active ? 'rgba(80,140,80,0.12)' : 'rgba(0,0,0,0.05)',
+                border: `1px solid ${active ? 'rgba(80,140,80,0.25)' : 'rgba(0,0,0,0.1)'}`,
+                borderRadius: '20px', padding: '3px 12px',
+              }}>
+                {active && <span className="live-dot" style={{ width: 7, height: 7, margin: 0 }} />}
+                POOL {pool}{active ? ' — LIVE' : ''}
               </div>
-            );
-          })}
-        </div>
-      )}
+              {active ? (
+                <LiveGameCard gk={active.key} game={active.game} />
+              ) : (
+                <div style={{
+                  background: 'rgba(255,255,255,0.5)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  textAlign: 'center',
+                  color: 'var(--gray-sub)',
+                  fontSize: '0.9rem',
+                  border: '1px solid rgba(0,0,0,0.07)',
+                }}>
+                  Waiting for game to start...
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       <h2 style={{ marginBottom: '1rem' }}>🏆 Standings</h2>
       {standings.length === 0 ? (

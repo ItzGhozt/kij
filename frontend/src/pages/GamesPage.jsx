@@ -302,6 +302,59 @@ function GameHistory({ games, teams }) {
   );
 }
 
+// ── Playoff scoring ───────────────────────────────────────────────
+
+function PlayoffScoring({ games, onGamesChanged, showToast }) {
+  const [activeGameKey, setActiveGameKey] = useState(null);
+
+  const playoffGames = Object.entries(games).filter(([, g]) => !g.scheduled);
+
+  if (activeGameKey) {
+    return (
+      <ScoringView
+        gameKey={activeGameKey}
+        games={games}
+        onGamesChanged={onGamesChanged}
+        showToast={showToast}
+        onBack={() => setActiveGameKey(null)}
+      />
+    );
+  }
+
+  if (playoffGames.length === 0) {
+    return (
+      <div className="card">
+        <p style={{ color: 'var(--text-muted)' }}>
+          No playoff games yet. Add a game from the Admin panel.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {playoffGames.map(([gk, g]) => (
+        <div key={gk} className="card mb-2" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: '600' }}>{g.team1} vs {g.team2}</div>
+            {g.completed && (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Winner: {g.winner}
+              </div>
+            )}
+          </div>
+          <button
+            className={`btn ${g.completed ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={() => setActiveGameKey(gk)}
+          >
+            {g.completed ? 'View' : '🏐 Score'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main GamesPage ────────────────────────────────────────────────
 
 export default function GamesPage({ teams, games, phase, onGamesChanged, showToast }) {
@@ -359,12 +412,11 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
         />
       )}
       {tab === 'score' && !isPoolPlay && (
-        <div className="card">
-          <h3 style={{ marginBottom: '0.5rem' }}>🏆 Playoffs</h3>
-          <p style={{ color: 'var(--text-muted)' }}>
-            Playoff bracket scoring coming soon. Use Manual Game to score playoff matchups.
-          </p>
-        </div>
+        <PlayoffScoring
+          games={games}
+          onGamesChanged={onGamesChanged}
+          showToast={showToast}
+        />
       )}
       {tab === 'history' && (
         <GameHistory games={games} teams={teams} />

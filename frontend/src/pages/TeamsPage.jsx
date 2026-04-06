@@ -3,7 +3,7 @@ import { Api } from '../api/http';
 
 // ── Manual Game Picker ────────────────────────────────────────────
 
-function ManualGamePicker({ teams, onGamesChanged, showToast }) {
+function ManualGamePicker({ teams, onGamesChanged, showToast, phase }) {
   const teamNames = Object.keys(teams);
   const [team1, setTeam1] = useState('');
   const [team2, setTeam2] = useState('');
@@ -22,7 +22,7 @@ function ManualGamePicker({ teams, onGamesChanged, showToast }) {
 
   function startGame() {
     if (!team1 || !team2 || team1 === team2) return;
-    Api.createGame(team1, team2, 'pool_play')
+    Api.createGame(team1, team2, phase || 'pool_play')
       .then(() => { onGamesChanged(); setStarted(true); })
       .catch((err) => showToast(err.message, 'error'));
   }
@@ -381,6 +381,7 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
             teams={teams}
             onGamesChanged={onGamesChanged || onTeamsChanged}
             showToast={showToast}
+            phase={phase}
           />
         </div>
       )}
