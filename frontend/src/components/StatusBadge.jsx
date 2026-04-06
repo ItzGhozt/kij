@@ -4,7 +4,7 @@ export default function StatusBadge({ admin, authenticated }) {
     label = '🔑 Administrator Portal';
     variant = 'admin';
   } else if (admin && !authenticated) {
-    label = '🔐 Login Required';
+    label = '👤 Player Portal';
     variant = 'login';
   } else {
     label = '👤 Player Portal';

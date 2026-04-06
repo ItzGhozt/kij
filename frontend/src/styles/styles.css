@@ -3,33 +3,38 @@
    Golden Summer Fields Palette
    ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Oswald:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Palette */
-  --green-deep:    #2d5a2d;
-  --green-mid:     #4a6b4a;
-  --green-leaf:    #8B9F6B;
-  --green-sage:    #A4B87C;
-  --tan-warm:      #BCA888;
-  --tan-light:     #D4C5A0;
-  --sand:          #E8D5B7;
-  --white-soft:    rgba(255,255,255,0.95);
-  --gray-text:     #2d3436;
-  --gray-sub:      #636e72;
-  --red-admin:     #dc3545;
+  /* KIJ Palette */
+  --cream:         #fdf0d5;
+  --red-dark:      #780000;
+  --red:           #c1121f;
+  --navy:          #1d3461;
+  --navy-light:    #2a4a8a;
 
-  /* Gradient */
-  --bg-gradient: linear-gradient(135deg, #b8d4b0 0%, #d4c5a0 50%, #e8d5b7 100%);
+  /* Semantic aliases — keeps existing components working */
+  --green-deep:    #1d3461;
+  --green-mid:     #1d3461;
+  --green-leaf:    #1d3461;
+  --green-sage:    #2a4a8a;
+  --tan-warm:      #c8a882;
+  --tan-light:     #e0cba8;
+  --sand:          #fdf0d5;
+  --white-soft:    rgba(255, 255, 255, 0.95);
+  --gray-text:     #1a1a2e;
+  --gray-sub:      #6b6b6b;
+  --red-admin:     #c1121f;
+  --primary:       #1d3461;
+
+  --bg-gradient:   #fdf0d5;
 
   /* Typography */
-  --font-display: 'Playfair Display', serif;
-  --font-body: 'Inter', sans-serif;
-  --green-deep: #2d5a2d;
-  --green-sage: #A4B87C;
+  --font-display: 'Oswald', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
 
   /* Spacing */
-  --radius:   0.75rem;
+  --radius:    0.75rem;
   --radius-lg: 1rem;
 }
 
@@ -42,8 +47,7 @@ html {
 
 body {
   font-family: var(--font-body);
-  background: var(--bg-gradient);
-  background-attachment: fixed;
+  background: var(--cream);
   color: var(--gray-text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -70,22 +74,24 @@ h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   min-height: calc(100vh - 80px);
-  padding: 2rem 1rem;
+  padding-top: 4rem;
+  padding-bottom: 2rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
   position: relative;
 }
 
 .hero-title {
-  font-family: 'foundation-sans', sans-serif;  /* Changed from 'Inter' */
-  font-size: clamp(2.4rem, 6vw, 4rem);
-  font-weight: 800;
-  color: var(--green-deep);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  font-weight: 700;
+  color: var(--navy);
   text-transform: uppercase;
-  letter-spacing: 3px;
-  text-shadow: 2px 2px 4px rgba(255,255,255,0.35);
-  margin-bottom: 0.5rem;
+  letter-spacing: 4px;
+  margin-bottom: 0.25rem;
   line-height: 1.1;
 }
 
@@ -120,23 +126,25 @@ h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem; }
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--green-sage), var(--green-leaf));
+  background: var(--navy);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(164,184,124,0.35);
+  box-shadow: 0 4px 14px rgba(29,52,97,0.3);
 }
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(164,184,124,0.5);
+  background: var(--navy-light);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(29,52,97,0.4);
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, var(--tan-warm), var(--tan-light));
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(188,168,136,0.3);
+  background: #e8e0d0;
+  color: var(--gray-text);
+  box-shadow: none;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 .btn-secondary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(188,168,136,0.5);
+  background: #ddd5c2;
+  transform: translateY(-1px);
 }
 
 .btn-danger {
@@ -227,7 +235,7 @@ select.form-control {
   animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
   pointer-events: none;
 }
-.success-toast { background: linear-gradient(135deg, var(--green-sage), var(--green-leaf)); }
+.success-toast { background: var(--navy); }
 .error-toast   { background: var(--red-admin); }
 
 @keyframes toastIn  { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
@@ -276,7 +284,7 @@ select.form-control {
   box-shadow: 0 4px 20px rgba(0,0,0,0.06);
 }
 .standings-table th {
-  background: linear-gradient(135deg, var(--green-sage), var(--green-leaf));
+  background: var(--navy);
   color: #fff;
   font-weight: 600;
   padding: 0.75rem 1rem;

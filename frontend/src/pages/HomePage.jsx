@@ -1,17 +1,26 @@
 export default function HomePage({ onNav }) {
   return (
     <div className="hero">
-      <h1 className="hero-title">KIJ Volleyball Tournament</h1>
-      <div style={{ marginTop: '2rem' }}>
-        <div className="hero-cta-label">Ready to Play?</div>
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: '0.5rem', padding: '0.85rem 2.5rem', fontSize: '1.05rem' }}
-          onClick={() => onNav('games')}
-        >
-          🏐 Score a Game
-        </button>
-      </div>
+      <img
+        src="/logo.png"
+        alt="KIJ Volleyball"
+        style={{ width: 460, height: 460, objectFit: 'contain', marginBottom: '-1.5rem' }}
+      />
+
+      <button
+        className="btn btn-primary"
+        style={{
+          padding: '0.9rem 3rem',
+          fontSize: '0.95rem',
+          letterSpacing: '1.5px',
+          fontFamily: 'var(--font-display)',
+          textTransform: 'uppercase',
+          borderRadius: '4px',
+        }}
+        onClick={() => onNav('games')}
+      >
+        Score a Game
+      </button>
     </div>
   );
 }

@@ -269,13 +269,14 @@
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #4caf78, #2e7d52);
+  background: var(--navy);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(76,175,120,0.35);
+  box-shadow: 0 4px 14px rgba(29,52,97,0.3);
 }
 .btn-success:hover {
+  background: var(--navy-light);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(76,175,120,0.5);
+  box-shadow: 0 8px 24px rgba(29,52,97,0.4);
 }
 .btn-success:active { transform: translateY(0); }
 .btn-secondary:active { transform: translateY(0); }
