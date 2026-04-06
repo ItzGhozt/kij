@@ -222,9 +222,10 @@ async def update_score(body: ScoreUpdate):
     current = game["sets"][body.set_key][score_field]
     game["sets"][body.set_key][score_field] = max(0, current + body.delta)
     save_game(body.game_key, game)
-    all_games = load_all_games()
-    await manager.broadcast({"type": "score_updated", "game_key": body.game_key, "games": all_games})
-    return {"success": True, "game": all_games[body.game_key]}
+    # Reuse the already-loaded dict — avoids a second DB round-trip
+    games[body.game_key] = game
+    await manager.broadcast({"type": "score_updated", "game_key": body.game_key, "games": games})
+    return {"success": True, "game": game}
 
 @app.post("/api/games/complete")
 async def complete_game(body: CompleteGame):
@@ -250,8 +251,9 @@ async def complete_game(body: CompleteGame):
     game["completed"] = True
     game["end_time"] = datetime.now().isoformat()
     save_game(body.game_key, game)
-    all_games = load_all_games()
-    await manager.broadcast({"type": "game_completed", "games": all_games})
+    # Reuse the already-loaded dict — avoids a second DB round-trip
+    games[body.game_key] = game
+    await manager.broadcast({"type": "game_completed", "games": games})
     return {"success": True, "winner": game["winner"]}
 
 

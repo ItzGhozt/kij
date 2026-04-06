@@ -15,14 +15,13 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   }, [games, gameKey]);
 
   function changeScore(setKey, team, delta) {
-    if (finishing) return; // block any clicks after Complete is pressed
+    if (finishing) return;
     const scoreField = `${team}_score`;
     setLocalScores((prev) => {
       const cur = prev[setKey][scoreField];
       return { ...prev, [setKey]: { ...prev[setKey], [scoreField]: Math.max(0, cur + delta) } };
     });
     Api.updateScore({ game_key: gameKey, set_key: setKey, team, delta })
-      .then(onGamesChanged)
       .catch(() => {
         setLocalScores((prev) => {
           const cur = prev[setKey][scoreField];
@@ -30,17 +29,18 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
         });
         showToast('Score update failed', 'error');
       });
+    // WebSocket handles state sync — no need to call onGamesChanged here
   }
 
   function finish() {
-    setFinishing(true); // immediately lock all score buttons
+    setFinishing(true);
     Api.completeGame(gameKey).then((res) => {
       showToast(`Game completed! Winner: ${res.winner}`, 'success');
       onBack();
-      onGamesChanged();
+      // WebSocket broadcasts game_completed — no need to call onGamesChanged here
     }).catch((err) => {
       showToast(err.message, 'error');
-      setFinishing(false); // unlock if complete itself failed
+      setFinishing(false);
     });
   }
 
@@ -120,7 +120,7 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
 
 function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
   const [activeGameKey, setActiveGameKey] = useState(null);
-  const [selections, setSelections] = useState({}); // pool -> selected game_key
+  const [selections, setSelections] = useState({});
 
   const pools = [...new Set(Object.values(teams).map((t) => t.pool))].sort();
 
@@ -198,7 +198,7 @@ function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
   );
 }
 
-// ── Manual game picker (original UI) ─────────────────────────────
+// ── Manual game picker ────────────────────────────────────────────
 
 function ManualGamePicker({ teams, games, onGamesChanged, showToast }) {
   const teamNames = Object.keys(teams);
@@ -298,7 +298,6 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
     <div className="container">
       <h1>Game Scoring</h1>
 
-      {/* Phase indicator */}
       <div style={{
         display: 'inline-block',
         marginBottom: '1rem',
