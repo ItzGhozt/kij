@@ -94,16 +94,16 @@ function PhaseControl({ phase, onPhaseChange, showToast, teams, games }) {
         <h3 style={{ marginBottom: '1rem' }}>Tournament Phase</h3>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {['pool_play', 'playoffs'].map((p) => {
-            const label = p === 'pool_play' ? 'Pool Play' : 'Playoffs';
-            const active = phase === p;
-            const color = p === 'playoffs' ? '#c0392b' : 'var(--primary)';
+            const label = p === 'pool_play' ? '🏐 Pool Play' : '🏆 Playoffs';
+            const active = phase === p || (p === 'pool_play' && !phase);
+            const activeColor = p === 'playoffs' ? '#c0392b' : '#4a7c59';
             return (
               <button key={p} onClick={() => switchPhase(p)} disabled={loading} style={{
-                padding: '0.5rem 1.5rem', borderRadius: '20px', border: '2px solid',
-                cursor: 'pointer', fontWeight: '600',
-                background: active ? color : 'rgba(0,0,0,0.05)',
-                borderColor: active ? color : 'rgba(0,0,0,0.15)',
-                color: active ? 'white' : 'rgba(0,0,0,0.5)',
+                padding: '0.6rem 1.5rem', borderRadius: '20px', border: '2px solid',
+                cursor: 'pointer', fontWeight: '700', fontSize: '0.95rem',
+                background: active ? activeColor : '#f0f0f0',
+                borderColor: active ? activeColor : '#ccc',
+                color: active ? 'white' : '#666',
               }}>
                 {label}
               </button>
