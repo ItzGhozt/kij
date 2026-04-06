@@ -2,6 +2,7 @@
 KIJ Volleyball Tournament – FastAPI Backend
 """
 
+import asyncio
 import hashlib
 import os
 from datetime import datetime
@@ -91,14 +92,16 @@ class ConnectionManager:
             self.active.remove(ws)
 
     async def broadcast(self, message: dict):
-        dead = []
-        for ws in self.active:
-            try:
-                await ws.send_json(message)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            self.disconnect(ws)
+        active = list(self.active)
+        if not active:
+            return
+        results = await asyncio.gather(
+            *[ws.send_json(message) for ws in active],
+            return_exceptions=True,
+        )
+        for ws, result in zip(active, results):
+            if isinstance(result, Exception):
+                self.disconnect(ws)
 
 
 manager = ConnectionManager()

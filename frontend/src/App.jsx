@@ -13,8 +13,28 @@ import TeamsPage from './pages/TeamsPage';
 import GamesPage from './pages/GamesPage';
 import LivePage from './pages/LivePage';
 
+const PATH_TO_PAGE = {
+  '/': 'home',
+  '/teams': 'teams',
+  '/games': 'games',
+  '/live': 'live',
+  '/admin': 'admin_login',
+};
+
+const PAGE_TO_PATH = {
+  home: '/',
+  teams: '/teams',
+  games: '/games',
+  live: '/live',
+  admin_login: '/admin',
+};
+
+function pageFromUrl() {
+  return PATH_TO_PAGE[window.location.pathname] || 'home';
+}
+
 export default function App() {
-  const [page, setPage] = useState('home');
+  const [page, setPage] = useState(pageFromUrl);
   const [adminMode, setAdminMode] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [teams, setTeams] = useState({});
@@ -32,6 +52,14 @@ export default function App() {
   function loadTeams() { Api.getTeams().then(setTeams).catch(() => {}); }
   function loadGames() { Api.getGames().then(setGames).catch(() => {}); }
   function loadAll() { loadTeams(); loadGames(); }
+
+  useEffect(() => {
+    function onPopState() {
+      setPage(pageFromUrl());
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   useEffect(() => {
     loadAll();
@@ -63,6 +91,10 @@ export default function App() {
   }, []);
 
   function navigate(p) {
+    const path = PAGE_TO_PATH[p] || '/';
+    if (window.location.pathname !== path) {
+      history.pushState(null, '', path);
+    }
     setPage(p);
     if (p === 'live' || p === 'games') loadAll();
   }
@@ -71,17 +103,17 @@ export default function App() {
     if (adminMode && authenticated) {
       setAdminMode(false);
       setAuthenticated(false);
-      setPage('home');
+      navigate('home');
       showToast('Logged out', 'success');
     } else {
       setAdminMode(true);
-      setPage('admin_login');
+      navigate('admin_login');
     }
   }
 
   function handleLogin() {
     setAuthenticated(true);
-    setPage('teams');
+    navigate('teams');
     showToast('Admin login successful!', 'success');
   }
 

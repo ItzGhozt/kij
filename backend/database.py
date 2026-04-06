@@ -1,6 +1,8 @@
 import os
 import psycopg2
+import psycopg2.pool
 from psycopg2.extras import RealDictCursor
+from contextlib import contextmanager
 from datetime import datetime
 from itertools import combinations
 from dotenv import load_dotenv
@@ -10,14 +12,28 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 SETS_PER_GAME = 2
 
+_pool = None
 
+def _get_pool():
+    global _pool
+    if _pool is None:
+        _pool = psycopg2.pool.ThreadedConnectionPool(
+            2, 8, DATABASE_URL, cursor_factory=RealDictCursor
+        )
+    return _pool
+
+@contextmanager
 def get_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    pool = _get_pool()
+    conn = pool.getconn()
+    try:
+        yield conn
+    finally:
+        pool.putconn(conn)
 
 
 def init_tables():
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS teams (
@@ -70,26 +86,20 @@ def init_tables():
                 ON CONFLICT (key) DO NOTHING;
             """)
             conn.commit()
-    finally:
-        conn.close()
 
 
 # ── Settings ─────────────────────────────────────────────────────
 
 def get_setting(key: str) -> str:
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT value FROM tournament_settings WHERE key = %s", (key,))
             row = cur.fetchone()
             return row["value"] if row else None
-    finally:
-        conn.close()
 
 
 def set_setting(key: str, value: str):
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO tournament_settings (key, value)
@@ -97,25 +107,19 @@ def set_setting(key: str, value: str):
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
             """, (key, value))
             conn.commit()
-    finally:
-        conn.close()
 
 
 def get_all_settings() -> dict:
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT key, value FROM tournament_settings")
             return {row["key"]: row["value"] for row in cur.fetchall()}
-    finally:
-        conn.close()
 
 
 # ── Team operations ──────────────────────────────────────────────
 
 def load_all_teams():
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT team_name, player1, player2, pool FROM teams ORDER BY team_name")
             return {
@@ -126,43 +130,35 @@ def load_all_teams():
                 }
                 for row in cur.fetchall()
             }
-    finally:
-        conn.close()
 
 
 def save_team(team_name: str, player1: str, player2: str, pool: str):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO teams (team_name, player1, player2, pool) VALUES (%s, %s, %s, %s)",
-                (team_name, player1, player2, pool),
-            )
-            conn.commit()
-            return True
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
+    with get_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO teams (team_name, player1, player2, pool) VALUES (%s, %s, %s, %s)",
+                    (team_name, player1, player2, pool),
+                )
+                conn.commit()
+                return True
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
+            return False
 
 
 def delete_team(team_name: str):
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM teams WHERE team_name = %s", (team_name,))
             conn.commit()
             return cur.rowcount > 0
-    finally:
-        conn.close()
 
 
 # ── Game operations ──────────────────────────────────────────────
 
 def load_all_games():
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT g.game_key, g.team1_name, g.team2_name, g.completed, g.winner,
@@ -198,58 +194,54 @@ def load_all_games():
                         "team2_score": row["team2_score"] or 0,
                     }
             return games
-    finally:
-        conn.close()
 
 
 def save_game(game_key: str, game_data: dict):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO games (game_key, team1_name, team2_name, completed, winner,
-                                   start_time, end_time, pool, scheduled)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (game_key)
-                DO UPDATE SET
-                    completed = EXCLUDED.completed,
-                    winner    = EXCLUDED.winner,
-                    end_time  = EXCLUDED.end_time
-                RETURNING id
-            """, (
-                game_key,
-                game_data["team1"],
-                game_data["team2"],
-                game_data.get("completed", False),
-                game_data.get("winner"),
-                datetime.fromisoformat(game_data["start_time"]) if game_data.get("start_time") else None,
-                datetime.fromisoformat(game_data["end_time"]) if game_data.get("end_time") else None,
-                game_data.get("pool"),
-                game_data.get("scheduled", False),
-            ))
-            game_id = cur.fetchone()["id"]
-            for set_num in range(1, SETS_PER_GAME + 1):
-                sk = f"set{set_num}"
-                if sk in game_data.get("sets", {}):
-                    cur.execute("""
-                        INSERT INTO game_sets (game_id, set_number, team1_score, team2_score)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (game_id, set_number)
-                        DO UPDATE SET
-                            team1_score = EXCLUDED.team1_score,
-                            team2_score = EXCLUDED.team2_score
-                    """, (
-                        game_id, set_num,
-                        game_data["sets"][sk]["team1_score"],
-                        game_data["sets"][sk]["team2_score"],
-                    ))
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
+    with get_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO games (game_key, team1_name, team2_name, completed, winner,
+                                       start_time, end_time, pool, scheduled)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (game_key)
+                    DO UPDATE SET
+                        completed = EXCLUDED.completed,
+                        winner    = EXCLUDED.winner,
+                        end_time  = EXCLUDED.end_time
+                    RETURNING id
+                """, (
+                    game_key,
+                    game_data["team1"],
+                    game_data["team2"],
+                    game_data.get("completed", False),
+                    game_data.get("winner"),
+                    datetime.fromisoformat(game_data["start_time"]) if game_data.get("start_time") else None,
+                    datetime.fromisoformat(game_data["end_time"]) if game_data.get("end_time") else None,
+                    game_data.get("pool"),
+                    game_data.get("scheduled", False),
+                ))
+                game_id = cur.fetchone()["id"]
+                for set_num in range(1, SETS_PER_GAME + 1):
+                    sk = f"set{set_num}"
+                    if sk in game_data.get("sets", {}):
+                        cur.execute("""
+                            INSERT INTO game_sets (game_id, set_number, team1_score, team2_score)
+                            VALUES (%s, %s, %s, %s)
+                            ON CONFLICT (game_id, set_number)
+                            DO UPDATE SET
+                                team1_score = EXCLUDED.team1_score,
+                                team2_score = EXCLUDED.team2_score
+                        """, (
+                            game_id, set_num,
+                            game_data["sets"][sk]["team1_score"],
+                            game_data["sets"][sk]["team2_score"],
+                        ))
+                conn.commit()
+                return True
+        except Exception:
+            conn.rollback()
+            return False
 
 
 def generate_pool_schedule(teams: dict) -> list:
@@ -259,21 +251,17 @@ def generate_pool_schedule(teams: dict) -> list:
         pool = td.get("pool", "A")
         pools.setdefault(pool, []).append(team_name)
 
-    # Fetch existing game keys so we never overwrite (and reset scores on) existing games
-    conn = get_connection()
-    try:
+    with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT game_key FROM games")
             existing_keys = {row["game_key"] for row in cur.fetchall()}
-    finally:
-        conn.close()
 
     created = []
     for pool, pool_teams in pools.items():
         for team1, team2 in combinations(sorted(pool_teams), 2):
             game_key = f"pool_{pool}_{team1}_vs_{team2}"
             if game_key in existing_keys:
-                continue  # already exists — never overwrite
+                continue
             game_data = {
                 "team1": team1,
                 "team2": team2,
@@ -297,35 +285,31 @@ def generate_pool_schedule(teams: dict) -> list:
 
 def delete_games_only():
     """Delete all games and scores but keep teams and phase."""
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM game_sets")
-            cur.execute("DELETE FROM games")
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
+    with get_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM game_sets")
+                cur.execute("DELETE FROM games")
+                conn.commit()
+                return True
+        except Exception:
+            conn.rollback()
+            return False
 
 
 def delete_all_data():
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM game_sets")
-            cur.execute("DELETE FROM games")
-            cur.execute("DELETE FROM teams")
-            cur.execute("UPDATE tournament_settings SET value = 'pool_play' WHERE key = 'phase'")
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
+    with get_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM game_sets")
+                cur.execute("DELETE FROM games")
+                cur.execute("DELETE FROM teams")
+                cur.execute("UPDATE tournament_settings SET value = 'pool_play' WHERE key = 'phase'")
+                conn.commit()
+                return True
+        except Exception:
+            conn.rollback()
+            return False
 
 
 # ── Standings calculation ────────────────────────────────────────
