@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Api } from '../api/http';
 
 // ── Shared scoring UI ─────────────────────────────────────────────
@@ -6,6 +6,7 @@ import { Api } from '../api/http';
 function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   const [localScores, setLocalScores] = useState(null);
   const [finishing, setFinishing] = useState(false);
+  const pendingUpdates = useRef(0);
   const serverGame = gameKey && games[gameKey];
 
   useEffect(() => {
@@ -21,6 +22,7 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
       const cur = prev[setKey][scoreField];
       return { ...prev, [setKey]: { ...prev[setKey], [scoreField]: Math.max(0, cur + delta) } };
     });
+    pendingUpdates.current += 1;
     Api.updateScore({ game_key: gameKey, set_key: setKey, team, delta })
       .catch(() => {
         setLocalScores((prev) => {
@@ -28,20 +30,33 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
           return { ...prev, [setKey]: { ...prev[setKey], [scoreField]: Math.max(0, cur - delta) } };
         });
         showToast('Score update failed', 'error');
+      })
+      .finally(() => {
+        pendingUpdates.current -= 1;
       });
-    // WebSocket handles state sync — no need to call onGamesChanged here
   }
 
   function finish() {
     setFinishing(true);
-    Api.completeGame(gameKey).then((res) => {
-      showToast(`Game completed! Winner: ${res.winner}`, 'success');
-      onBack();
-      // WebSocket broadcasts game_completed — no need to call onGamesChanged here
-    }).catch((err) => {
-      showToast(err.message, 'error');
-      setFinishing(false);
-    });
+
+    function sendComplete() {
+      if (pendingUpdates.current > 0) {
+        setTimeout(sendComplete, 50);
+        return;
+      }
+      Api.completeGame(gameKey)
+        .then((res) => {
+          showToast(`Game completed! Winner: ${res.winner}`, 'success');
+          onBack();
+          onGamesChanged();
+        })
+        .catch((err) => {
+          showToast(err.message, 'error');
+          setFinishing(false);
+        });
+    }
+
+    sendComplete();
   }
 
   if (!serverGame) return <p>Game not found.</p>;
