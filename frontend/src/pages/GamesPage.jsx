@@ -366,27 +366,17 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
     <div className="container">
       <h1>Game Scoring</h1>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        {[
-          { key: 'pool_play', label: '🏐 Pool Play', activeColor: 'var(--primary)' },
-          { key: 'playoffs',  label: '🏆 Playoffs',  activeColor: '#c0392b' },
-        ].map(({ key, label, activeColor }) => {
-          const active = phase === key || (key === 'pool_play' && isPoolPlay);
-          return (
-            <div key={key} style={{
-              padding: '0.5rem 1.25rem',
-              borderRadius: '20px',
-              border: `1px solid ${active ? activeColor : 'rgba(0,0,0,0.15)'}`,
-              fontWeight: active ? '700' : '400',
-              fontSize: '0.9rem',
-              background: active ? activeColor : 'transparent',
-              color: active ? 'white' : 'var(--text-muted)',
-              userSelect: 'none',
-            }}>
-              {label}
-            </div>
-          );
-        })}
+      <div style={{
+        display: 'inline-block',
+        marginBottom: '1rem',
+        padding: '3px 14px',
+        borderRadius: '12px',
+        fontSize: '0.82rem',
+        fontWeight: '600',
+        background: isPoolPlay ? 'rgba(80,140,80,0.15)' : 'rgba(192,57,43,0.15)',
+        color: isPoolPlay ? '#2d6a2d' : '#8b1a1a',
+      }}>
+        {isPoolPlay ? '🏐 Pool Play' : '🏆 Playoffs'}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
