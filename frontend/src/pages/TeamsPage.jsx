@@ -99,11 +99,11 @@ function PhaseControl({ phase, onPhaseChange, showToast, teams, games }) {
             const color = p === 'playoffs' ? '#c0392b' : 'var(--primary)';
             return (
               <button key={p} onClick={() => switchPhase(p)} disabled={loading} style={{
-                padding: '0.5rem 1.5rem', borderRadius: '20px', border: '1px solid',
+                padding: '0.5rem 1.5rem', borderRadius: '20px', border: '2px solid',
                 cursor: 'pointer', fontWeight: '600',
-                background: active ? color : 'transparent',
-                borderColor: active ? color : 'rgba(0,0,0,0.2)',
-                color: active ? 'white' : 'inherit',
+                background: active ? color : 'rgba(0,0,0,0.05)',
+                borderColor: active ? color : 'rgba(0,0,0,0.15)',
+                color: active ? 'white' : 'rgba(0,0,0,0.5)',
               }}>
                 {label}
               </button>
