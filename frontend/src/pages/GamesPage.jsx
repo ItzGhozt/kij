@@ -38,21 +38,22 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
 
   function finish() {
     setFinishing(true);
+    const deadline = Date.now() + 1500;
 
     function sendComplete() {
-      if (pendingUpdates.current > 0) {
+      if (pendingUpdates.current > 0 && Date.now() < deadline) {
         setTimeout(sendComplete, 50);
         return;
       }
+      // Navigate back immediately — don't wait for HTTP response
+      onBack();
       Api.completeGame(gameKey)
         .then((res) => {
           showToast(`Game completed! Winner: ${res.winner}`, 'success');
-          onBack();
           onGamesChanged();
         })
         .catch((err) => {
-          showToast(err.message, 'error');
-          setFinishing(false);
+          showToast(`Save failed: ${err.message}`, 'error');
         });
     }
 
