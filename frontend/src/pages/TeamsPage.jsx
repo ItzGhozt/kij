@@ -184,7 +184,11 @@ function AddTeamForm({ onAdd, showToast }) {
 
 // ── Registered Teams ──────────────────────────────────────────────
 
-function TeamList({ teams, admin, onDelete }) {
+function TeamList({ teams, admin, onDelete, onEdit }) {
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const pools = ['A', 'B', 'C', 'D', 'E'];
   const byPool = {};
   Object.entries(teams).forEach(([name, td]) => {
@@ -193,6 +197,33 @@ function TeamList({ teams, admin, onDelete }) {
     byPool[p].push(name);
   });
   const activePools = pools.filter((p) => byPool[p]?.length > 0);
+
+  function startEdit(teamName) {
+    setEditingTeam(teamName);
+    setEditValue(teamName);
+  }
+
+  function cancelEdit() {
+    setEditingTeam(null);
+    setEditValue('');
+  }
+
+  function saveEdit(oldName) {
+    if (!editValue.trim()) {
+      onEdit('error', 'Team name cannot be empty');
+      return;
+    }
+    if (editValue === oldName) {
+      cancelEdit();
+      return;
+    }
+    setLoading(true);
+    onEdit('edit', oldName, editValue.trim())
+      .then(() => {
+        cancelEdit();
+      })
+      .finally(() => setLoading(false));
+  }
 
   if (activePools.length === 0) {
     return (
@@ -233,26 +264,89 @@ function TeamList({ teams, admin, onDelete }) {
                 {byPool[pool].map((name) => (
                   <div key={name} style={{
                     display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '6px 14px',
+                    padding: editingTeam === name ? '4px 8px' : '6px 14px',
                     borderRadius: '20px',
                     background: 'rgba(255,255,255,0.65)',
                     border: '1px solid rgba(0,0,0,0.1)',
                     fontSize: '0.9rem', fontWeight: '500',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                   }}>
-                    {name}
-                    {admin && (
-                      <button
-                        onClick={() => onDelete(name)}
-                        title={`Remove ${name}`}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          color: 'rgba(180,50,50,0.6)', fontSize: '0.85rem',
-                          padding: '0 0 0 2px', lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
+                    {editingTeam === name ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEdit(name);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          disabled={loading}
+                          autoFocus
+                          style={{
+                            border: '1px solid var(--primary)',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '0.9rem',
+                            width: '140px',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          onClick={() => saveEdit(name)}
+                          disabled={loading}
+                          title="Save"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: '#2d6a2d', fontSize: '1.1rem',
+                            padding: '0', lineHeight: 1,
+                          }}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          disabled={loading}
+                          title="Cancel"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'rgba(180,50,50,0.6)', fontSize: '0.95rem',
+                            padding: '0', lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {name}
+                        {admin && (
+                          <>
+                            <button
+                              onClick={() => startEdit(name)}
+                              title={`Edit ${name}`}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'rgba(80,140,180,0.7)', fontSize: '0.85rem',
+                                padding: '0 2px', lineHeight: 1,
+                              }}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              onClick={() => onDelete(name)}
+                              title={`Remove ${name}`}
+                              style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'rgba(180,50,50,0.6)', fontSize: '0.85rem',
+                                padding: '0 0 0 2px', lineHeight: 1,
+                              }}
+                            >
+                              ×
+                            </button>
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
@@ -318,11 +412,28 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
       .catch((err) => showToast(err.message, 'error'));
   }
 
+  async function handleTeamEdit(action, oldName, newName) {
+    if (action === 'error') {
+      showToast(oldName, 'error'); // oldName is the error message in this case
+      return;
+    }
+    
+    try {
+      await Api.editTeamName(oldName, newName);
+      showToast(`Renamed "${oldName}" to "${newName}"`, 'success');
+      onTeamsChanged();
+      if (onGamesChanged) onGamesChanged(); // Refresh games too since they reference team names
+    } catch (err) {
+      showToast(err.message, 'error');
+      throw err; // Re-throw so the TeamList component knows it failed
+    }
+  }
+
   if (!admin || !authenticated) {
     return (
       <div className="container">
         <h1>Teams</h1>
-        <TeamList teams={teams} admin={false} onDelete={() => {}} />
+        <TeamList teams={teams} admin={false} onDelete={() => {}} onEdit={() => {}} />
         <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           Admin login required to add, remove, or manage teams.
         </p>
@@ -390,7 +501,7 @@ export default function TeamsPage({ teams, games = {}, admin, authenticated, pha
       {activePanel === 'teams' && (
         <div>
           <AddTeamForm onAdd={onTeamsChanged} showToast={showToast} />
-          <TeamList teams={teams} admin={true} onDelete={deleteTeam} />
+          <TeamList teams={teams} admin={true} onDelete={deleteTeam} onEdit={handleTeamEdit} />
           <ResetTournament showToast={showToast} onReset={onTeamsChanged} />
         </div>
       )}

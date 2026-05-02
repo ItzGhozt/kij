@@ -159,6 +159,43 @@ def delete_team(team_name: str):
             return cur.rowcount > 0
 
 
+def update_team_name(old_name: str, new_name: str):
+    """Update team name in teams table and all references in games table"""
+    with get_connection() as conn:
+        try:
+            with conn.cursor() as cur:
+                # Update team name in teams table
+                cur.execute(
+                    "UPDATE teams SET team_name = %s WHERE team_name = %s",
+                    (new_name, old_name)
+                )
+                
+                # Update all game references
+                cur.execute(
+                    "UPDATE games SET team1_name = %s WHERE team1_name = %s",
+                    (new_name, old_name)
+                )
+                cur.execute(
+                    "UPDATE games SET team2_name = %s WHERE team2_name = %s",
+                    (new_name, old_name)
+                )
+                cur.execute(
+                    "UPDATE games SET winner = %s WHERE winner = %s",
+                    (new_name, old_name)
+                )
+                cur.execute(
+                    "UPDATE games SET working_team = %s WHERE working_team = %s",
+                    (new_name, old_name)
+                )
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            conn.rollback()
+            print(f"Error updating team name: {e}")
+            return False
+
+
 # ── Game operations ──────────────────────────────────────────────
 
 def load_all_games():

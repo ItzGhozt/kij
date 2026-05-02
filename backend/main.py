@@ -17,6 +17,7 @@ from database import (
     load_all_teams,
     save_team,
     delete_team,
+    update_team_name,
     load_all_games,
     save_game,
     delete_all_data,
@@ -52,6 +53,9 @@ class TeamCreate(BaseModel):
     player1: str = ""
     player2: str = ""
     pool: str = "A"
+
+class TeamUpdate(BaseModel):
+    new_name: str
 
 class GameCreate(BaseModel):
     team1: str
@@ -169,6 +173,26 @@ async def create_team(body: TeamCreate):
     await manager.broadcast({"type": "teams_updated", "teams": load_all_teams()})
     return {"success": True, "team_name": body.team_name}
 
+@app.patch("/api/teams/{old_name}")
+async def edit_team_name(old_name: str, body: TeamUpdate):
+    """Update team name across teams and all games"""
+    teams = load_all_teams()
+    if old_name not in teams:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if body.new_name in teams and body.new_name != old_name:
+        raise HTTPException(status_code=400, detail="Team name already exists")
+    
+    ok = update_team_name(old_name, body.new_name)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed to update team name")
+    
+    await manager.broadcast({
+        "type": "teams_updated", 
+        "teams": load_all_teams(),
+        "games": load_all_games()
+    })
+    return {"success": True, "old_name": old_name, "new_name": body.new_name}
+
 @app.delete("/api/teams/{team_name}")
 async def remove_team(team_name: str):
     ok = delete_team(team_name)
@@ -200,6 +224,7 @@ async def create_game(body: GameCreate):
         "end_time": None,
         "pool": None,
         "scheduled": False,
+        "working_team": None,
     }
     save_game(game_key, game_data)
     await manager.broadcast({"type": "games_updated", "games": load_all_games()})

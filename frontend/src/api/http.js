@@ -15,6 +15,7 @@ export const Api = {
   login: (username, password) => request('POST', '/api/auth/login', { username, password }),
   getTeams: () => request('GET', '/api/teams'),
   createTeam: (data) => request('POST', '/api/teams', data),
+  editTeamName: (oldName, newName) => request('PATCH', `/api/teams/${encodeURIComponent(oldName)}`, { new_name: newName }),
   deleteTeam: (name) => request('DELETE', `/api/teams/${encodeURIComponent(name)}`),
   getGames: () => request('GET', '/api/games'),
   createGame: (team1, team2, phase = 'pool_play') => request('POST', '/api/games', { team1, team2, phase }),
