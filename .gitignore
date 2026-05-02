@@ -5,3 +5,7 @@ __pycache__/
 .env
 dist/
 frontend/package-lock.json
+backend/venv/
+venv/
+__pycache__/
+*.pyc

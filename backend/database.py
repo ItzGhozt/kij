@@ -55,7 +55,8 @@ def init_tables():
                     start_time TIMESTAMP,
                     end_time TIMESTAMP,
                     pool VARCHAR(1),
-                    scheduled BOOLEAN DEFAULT FALSE
+                    scheduled BOOLEAN DEFAULT FALSE,
+                    working_team VARCHAR(255)
                 );
             """)
             cur.execute("""
@@ -63,6 +64,9 @@ def init_tables():
             """)
             cur.execute("""
                 ALTER TABLE games ADD COLUMN IF NOT EXISTS scheduled BOOLEAN DEFAULT FALSE;
+            """)
+            cur.execute("""
+                ALTER TABLE games ADD COLUMN IF NOT EXISTS working_team VARCHAR(255);
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS game_sets (
@@ -162,7 +166,7 @@ def load_all_games():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT g.game_key, g.team1_name, g.team2_name, g.completed, g.winner,
-                       g.start_time, g.end_time, g.pool, g.scheduled,
+                       g.start_time, g.end_time, g.pool, g.scheduled, g.working_team,
                        gs.set_number, gs.team1_score, gs.team2_score
                 FROM games g
                 LEFT JOIN game_sets gs ON g.id = gs.game_id
@@ -182,6 +186,7 @@ def load_all_games():
                         "end_time": row["end_time"].isoformat() if row["end_time"] else None,
                         "pool": row["pool"],
                         "scheduled": row["scheduled"] or False,
+                        "working_team": row["working_team"],
                         "sets": {
                             "set1": {"team1_score": 0, "team2_score": 0},
                             "set2": {"team1_score": 0, "team2_score": 0},
@@ -202,8 +207,8 @@ def save_game(game_key: str, game_data: dict):
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO games (game_key, team1_name, team2_name, completed, winner,
-                                       start_time, end_time, pool, scheduled)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                       start_time, end_time, pool, scheduled, working_team)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (game_key)
                     DO UPDATE SET
                         completed = EXCLUDED.completed,
@@ -220,6 +225,7 @@ def save_game(game_key: str, game_data: dict):
                     datetime.fromisoformat(game_data["end_time"]) if game_data.get("end_time") else None,
                     game_data.get("pool"),
                     game_data.get("scheduled", False),
+                    game_data.get("working_team"),
                 ))
                 game_id = cur.fetchone()["id"]
                 for set_num in range(1, SETS_PER_GAME + 1):
@@ -244,8 +250,71 @@ def save_game(game_key: str, game_data: dict):
             return False
 
 
+def _assign_working_teams(pool_teams: list, matchups: list) -> list:
+    """
+    Assign working teams to matchups.
+    
+    Strategy:
+    - Distribute work evenly across all teams
+    - Max 2 consecutive games per team
+    - Prefer teams that just finished playing (rest while working)
+    
+    Args:
+        pool_teams: List of team names in the pool
+        matchups: List of (team1, team2) tuples
+    
+    Returns:
+        List of (team1, team2, working_team) tuples
+    """
+    if len(pool_teams) < 3:
+        # Can't assign working teams if there aren't enough teams
+        return [(t1, t2, None) for t1, t2 in matchups]
+    
+    # Track work count and consecutive work streak for each team
+    work_count = {team: 0 for team in pool_teams}
+    consecutive_work = {team: 0 for team in pool_teams}
+    last_played = {team: -999 for team in pool_teams}  # Track when team last played
+    
+    result = []
+    
+    for idx, (team1, team2) in enumerate(matchups):
+        # Find eligible workers: teams not playing this game
+        eligible = [t for t in pool_teams if t not in (team1, team2)]
+        
+        # Filter out teams that worked 2 games in a row
+        eligible = [t for t in eligible if consecutive_work[t] < 2]
+        
+        if not eligible:
+            # Reset consecutive counts if everyone is blocked
+            for team in pool_teams:
+                if team not in (team1, team2):
+                    consecutive_work[team] = 0
+            eligible = [t for t in pool_teams if t not in (team1, team2)]
+        
+        # Prefer teams that just finished playing (higher last_played index)
+        # If tied, prefer teams with lower total work count
+        worker = max(eligible, key=lambda t: (last_played[t], -work_count[t]))
+        
+        # Update tracking
+        work_count[worker] += 1
+        consecutive_work[worker] += 1
+        
+        # Reset consecutive work for teams not working this game
+        for team in pool_teams:
+            if team != worker:
+                consecutive_work[team] = 0
+        
+        # Update last_played for teams in this game
+        last_played[team1] = idx
+        last_played[team2] = idx
+        
+        result.append((team1, team2, worker))
+    
+    return result
+
+
 def generate_pool_schedule(teams: dict) -> list:
-    """Generate round-robin schedule for each pool. Skips pairs that already exist."""
+    """Generate round-robin schedule for each pool with working team assignments."""
     pools = {}
     for team_name, td in teams.items():
         pool = td.get("pool", "A")
@@ -258,7 +327,13 @@ def generate_pool_schedule(teams: dict) -> list:
 
     created = []
     for pool, pool_teams in pools.items():
-        for team1, team2 in combinations(sorted(pool_teams), 2):
+        # Generate all matchups
+        matchups = list(combinations(sorted(pool_teams), 2))
+        
+        # Assign working teams
+        matchups_with_workers = _assign_working_teams(pool_teams, matchups)
+        
+        for team1, team2, working_team in matchups_with_workers:
             game_key = f"pool_{pool}_{team1}_vs_{team2}"
             if game_key in existing_keys:
                 continue
@@ -267,6 +342,7 @@ def generate_pool_schedule(teams: dict) -> list:
                 "team2": team2,
                 "pool": pool,
                 "scheduled": True,
+                "working_team": working_team,
                 "sets": {
                     "set1": {"team1_score": 0, "team2_score": 0},
                     "set2": {"team1_score": 0, "team2_score": 0},

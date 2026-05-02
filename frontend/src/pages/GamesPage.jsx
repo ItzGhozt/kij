@@ -74,6 +74,12 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
             <span className="badge badge-success">Completed — Winner: {game.winner}</span>
           </div>
         )}
+        {/* Display working team once backend implements it */}
+        {game.working_team && (
+          <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            Working Team: <strong>{game.working_team}</strong>
+          </div>
+        )}
       </div>
 
       {Object.entries(game.sets).map(([setKey, scores]) => (
@@ -132,21 +138,31 @@ function ScoringView({ gameKey, games, onGamesChanged, showToast, onBack }) {
   );
 }
 
-// ── Pool play matchup dropdowns ───────────────────────────────────
+// ── Smart Pool Play Scoring with Card Layout ──────────────────────
 
 function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
   const [activeGameKey, setActiveGameKey] = useState(null);
-  const [selections, setSelections] = useState({});
+  const [expandedPools, setExpandedPools] = useState({});
 
   const pools = [...new Set(Object.values(teams).map((t) => t.pool))].sort();
 
   function getPoolGames(pool) {
-    const poolTeamSet = new Set(
-      Object.entries(teams).filter(([, td]) => td.pool === pool).map(([name]) => name)
-    );
-    return Object.entries(games).filter(
-      ([, g]) => g.scheduled && poolTeamSet.has(g.team1) && poolTeamSet.has(g.team2)
-    );
+    // Get all scheduled games for this pool
+    const poolGames = Object.entries(games)
+      .filter(([, g]) => g.scheduled && g.pool === pool)
+      .map(([gk, g]) => ({ key: gk, ...g }));
+
+    // Sort: incomplete games first, then completed games
+    poolGames.sort((a, b) => {
+      if (a.completed === b.completed) return 0;
+      return a.completed ? 1 : -1;
+    });
+
+    return poolGames;
+  }
+
+  function togglePool(poolKey) {
+    setExpandedPools(prev => ({ ...prev, [poolKey]: !prev[poolKey] }));
   }
 
   if (activeGameKey) {
@@ -173,38 +189,243 @@ function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
     <div>
       {pools.map((pool) => {
         const poolGames = getPoolGames(pool);
-        const selected = selections[pool] || '';
+        const incompleteGames = poolGames.filter(g => !g.completed);
+        const completedGames = poolGames.filter(g => g.completed);
+
+        // Determine "Currently Playing" (first incomplete) and "Up Next" (second incomplete)
+        const currentGame = incompleteGames[0];
+        const nextGame = incompleteGames[1];
+        const otherGames = incompleteGames.slice(2);
+
         return (
-          <div key={pool} className="card mb-3">
-            <h3 style={{ marginBottom: '1rem' }}>Pool {pool}</h3>
+          <div key={pool} style={{ marginBottom: '2rem' }}>
+            <h2 style={{ 
+              fontSize: '1.3rem', 
+              fontWeight: '600', 
+              marginBottom: '1rem',
+              color: 'var(--primary)'
+            }}>
+              Pool {pool}
+            </h2>
+
             {poolGames.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                No matchups scheduled. Ask an admin to generate the schedule.
-              </p>
+              <div className="card">
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  No matchups scheduled. Ask an admin to generate the schedule.
+                </p>
+              </div>
             ) : (
               <>
-                <div className="form-group mb-2">
-                  <label>Select Matchup</label>
-                  <select
-                    className="form-control"
-                    value={selected}
-                    onChange={(e) => setSelections((prev) => ({ ...prev, [pool]: e.target.value }))}
+                {/* Currently Playing */}
+                {currentGame && (
+                  <div 
+                    className="card mb-3" 
+                    style={{ 
+                      border: '2px solid var(--primary)',
+                      background: 'rgba(var(--primary-rgb), 0.05)'
+                    }}
                   >
-                    <option value="">— Select a matchup —</option>
-                    {poolGames.map(([gk, g]) => (
-                      <option key={gk} value={gk}>
-                        {g.team1} vs {g.team2}{g.completed ? '  ✓' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  className="btn btn-primary"
-                  disabled={!selected}
-                  onClick={() => setActiveGameKey(selected)}
-                >
-                  🏐 Score Match
-                </button>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: '600', 
+                      color: 'var(--primary)', 
+                      marginBottom: '0.5rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      ⚡ Currently Playing
+                    </div>
+                    <div style={{ 
+                      fontSize: '1.1rem', 
+                      fontWeight: '600', 
+                      marginBottom: '0.5rem' 
+                    }}>
+                      🏐 {currentGame.team1} vs {currentGame.team2}
+                    </div>
+                    {currentGame.working_team && (
+                      <div style={{ 
+                        fontSize: '0.85rem', 
+                        color: 'var(--text-muted)', 
+                        marginBottom: '0.75rem' 
+                      }}>
+                        Working: {currentGame.working_team}
+                      </div>
+                    )}
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setActiveGameKey(currentGame.key)}
+                      style={{ width: '100%', fontSize: '1rem', padding: '0.75rem' }}
+                    >
+                      ⚡ Score This Game
+                    </button>
+                  </div>
+                )}
+
+                {/* Up Next */}
+                {nextGame && (
+                  <div className="card mb-3">
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: '600', 
+                      color: 'var(--text-muted)', 
+                      marginBottom: '0.5rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      ⏭️ Up Next
+                    </div>
+                    <div style={{ 
+                      fontSize: '1rem', 
+                      fontWeight: '600', 
+                      marginBottom: '0.5rem' 
+                    }}>
+                      {nextGame.team1} vs {nextGame.team2}
+                    </div>
+                    {nextGame.working_team && (
+                      <div style={{ 
+                        fontSize: '0.85rem', 
+                        color: 'var(--text-muted)', 
+                        marginBottom: '0.75rem' 
+                      }}>
+                        Working: {nextGame.working_team}
+                      </div>
+                    )}
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setActiveGameKey(nextGame.key)}
+                      style={{ width: '100%' }}
+                    >
+                      Score This Match →
+                    </button>
+                  </div>
+                )}
+
+                {/* Other Incomplete Games - Collapsed */}
+                {otherGames.length > 0 && (
+                  <div className="card mb-3" style={{ padding: '0.75rem' }}>
+                    <button
+                      onClick={() => togglePool(`${pool}_incomplete`)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span>▼ {otherGames.length} more game{otherGames.length > 1 ? 's' : ''} in queue</span>
+                      <span>{expandedPools[`${pool}_incomplete`] ? '▲' : '▼'}</span>
+                    </button>
+                    {expandedPools[`${pool}_incomplete`] && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        {otherGames.map((game) => (
+                          <div 
+                            key={game.key}
+                            style={{
+                              padding: '0.75rem',
+                              borderTop: '1px solid rgba(0,0,0,0.1)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '1rem'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>
+                                {game.team1} vs {game.team2}
+                              </div>
+                              {game.working_team && (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                  Working: {game.working_team}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => setActiveGameKey(game.key)}
+                              style={{ minWidth: '80px', fontSize: '0.85rem' }}
+                            >
+                              Score
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Completed Games - Collapsed */}
+                {completedGames.length > 0 && (
+                  <div className="card" style={{ padding: '0.75rem' }}>
+                    <button
+                      onClick={() => togglePool(`${pool}_completed`)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span>✓ Completed Games ({completedGames.length})</span>
+                      <span>{expandedPools[`${pool}_completed`] ? '▲' : '▼'}</span>
+                    </button>
+                    {expandedPools[`${pool}_completed`] && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        {completedGames.map((game) => (
+                          <div 
+                            key={game.key}
+                            style={{
+                              padding: '0.75rem',
+                              borderTop: '1px solid rgba(0,0,0,0.1)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '1rem'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>
+                                {game.team1} vs {game.team2}
+                              </div>
+                              <div style={{ 
+                                fontSize: '0.8rem', 
+                                color: '#2d6a2d',
+                                marginTop: '0.25rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexWrap: 'wrap'
+                              }}>
+                                <span>Winner: {game.winner}</span>
+                                {game.working_team && (
+                                  <span style={{ color: 'var(--text-muted)' }}>• Working: {game.working_team}</span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => setActiveGameKey(game.key)}
+                              style={{ minWidth: '80px', fontSize: '0.85rem' }}
+                            >
+                              View
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -214,7 +435,7 @@ function PoolPlayScoring({ teams, games, onGamesChanged, showToast }) {
   );
 }
 
-// ── Manual game picker ────────────────────────────────────────────
+// ── Manual game picker (unchanged) ────────────────────────────────
 
 function ManualGamePicker({ teams, games, onGamesChanged, showToast }) {
   const teamNames = Object.keys(teams);
@@ -271,39 +492,7 @@ function ManualGamePicker({ teams, games, onGamesChanged, showToast }) {
   );
 }
 
-// ── Game History ──────────────────────────────────────────────────
-
-function GameHistory({ games, teams }) {
-  const completed = Object.entries(games).filter(([, g]) => g.completed);
-  if (completed.length === 0) {
-    return <p style={{ color: 'var(--text-muted)' }}>No completed games yet.</p>;
-  }
-  return (
-    <div>
-      <h2 className="section-title">Game History</h2>
-      {completed.map(([gk, g]) => (
-        <div key={gk} className="card mb-2">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: '600' }}>{g.team1} vs {g.team2}</span>
-            <span style={{
-              fontSize: '0.8rem', padding: '2px 10px', borderRadius: '12px',
-              background: 'rgba(80,160,80,0.15)', color: '#2d6a2d',
-            }}>
-              {g.winner}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {Object.entries(g.sets).map(([sk, s]) => (
-              <span key={sk}>{sk.replace('set', 'S')}: {s.team1_score}–{s.team2_score}</span>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Playoff scoring ───────────────────────────────────────────────
+// ── Playoff scoring (unchanged) ───────────────────────────────────
 
 function PlayoffScoring({ games, onGamesChanged, showToast }) {
   const [activeGameKey, setActiveGameKey] = useState(null);
@@ -359,8 +548,6 @@ function PlayoffScoring({ games, onGamesChanged, showToast }) {
 // ── Main GamesPage ────────────────────────────────────────────────
 
 export default function GamesPage({ teams, games, phase, onGamesChanged, showToast }) {
-  const [tab, setTab] = useState('score');
-
   const isPoolPlay = !phase || phase === 'pool_play';
 
   return (
@@ -369,7 +556,7 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
 
       <div style={{
         display: 'inline-block',
-        marginBottom: '1rem',
+        marginBottom: '1.5rem',
         padding: '3px 14px',
         borderRadius: '12px',
         fontSize: '0.82rem',
@@ -380,47 +567,19 @@ export default function GamesPage({ teams, games, phase, onGamesChanged, showToa
         {isPoolPlay ? '🏐 Pool Play' : '🏆 Playoffs'}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        {[
-          { key: 'score', label: '🎮 Score Game' },
-          { key: 'history', label: '📜 Game History' },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            style={{
-              padding: '0.5rem 1.25rem',
-              borderRadius: '20px',
-              border: '1px solid',
-              cursor: 'pointer',
-              fontWeight: tab === key ? '600' : '400',
-              background: tab === key ? 'var(--primary)' : 'transparent',
-              borderColor: tab === key ? 'var(--primary)' : 'rgba(0,0,0,0.2)',
-              color: tab === key ? 'white' : 'inherit',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'score' && isPoolPlay && (
+      {isPoolPlay ? (
         <PoolPlayScoring
           teams={teams}
           games={games}
           onGamesChanged={onGamesChanged}
           showToast={showToast}
         />
-      )}
-      {tab === 'score' && !isPoolPlay && (
+      ) : (
         <PlayoffScoring
           games={games}
           onGamesChanged={onGamesChanged}
           showToast={showToast}
         />
-      )}
-      {tab === 'history' && (
-        <GameHistory games={games} teams={teams} />
       )}
     </div>
   );

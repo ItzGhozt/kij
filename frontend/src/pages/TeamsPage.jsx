@@ -151,7 +151,7 @@ function AddTeamForm({ onAdd, showToast }) {
     if (!teamName.trim()) { showToast('Team name required', 'error'); return; }
     setLoading(true);
     Api.createTeam({ team_name: teamName.trim(), player1: '', player2: '', pool })
-      .then(() => { showToast(`"${teamName}" added to Pool ${pool}`, 'success'); setTeamName(''); setPool('A'); onAdd(); })
+      .then(() => { showToast(`"${teamName}" added to Pool ${pool}`, 'success'); setTeamName(''); onAdd(); })
       .catch((err) => showToast(err.message, 'error'))
       .finally(() => setLoading(false));
   }
